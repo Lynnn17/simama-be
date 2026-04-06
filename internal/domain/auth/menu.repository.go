@@ -99,6 +99,7 @@ func ProvideMenuRepositoryPostgreSQL(db *infras.PostgresqlConn) *MenuRepositoryP
 }
 
 func (r *MenuRepositoryPostgreSQL) ResolveMenuByRoleID(req MenuRequest) (data []MenuResponse, err error) {
+
 	criteria := ` WHERE m.level = 1 AND coalesce(m.is_deleted,false)=false AND mr.role_id::varchar=$1 
 		AND mr.permission ilike '%VIEW%' ORDER BY m.seq ASC `
 	err = r.DB.Read.Select(&data, menuRoleQuery.SelectDTO+criteria, req.RoleId)
@@ -111,6 +112,15 @@ func (r *MenuRepositoryPostgreSQL) ResolveMenuByRoleID(req MenuRequest) (data []
 }
 
 func (r *MenuRepositoryPostgreSQL) ResolveMenuByParentID(req MenuRequest) (data []MenuResponse, err error) {
+	if req.RoleId == "HA01" {
+		criteria := ` WHERE coalesce(m.is_deleted,false)=false AND m.parent_id::varchar=$1 ORDER BY m.seq ASC `
+		err = r.DB.Read.Select(&data, menuQuery.SelectDTO+criteria, req.ParentId)
+		if err != nil {
+			logger.ErrorWithStack(err)
+		}
+		return
+	}
+
 	criteria := ` WHERE coalesce(m.is_deleted,false)=false AND mr.role_id::varchar=$1 AND m.parent_id::varchar=$2 
 		AND mr.permission ilike '%VIEW%' ORDER BY m.seq ASC `
 	err = r.DB.Read.Select(&data, menuRoleQuery.SelectDTO+criteria, req.RoleId, req.ParentId)
@@ -123,6 +133,15 @@ func (r *MenuRepositoryPostgreSQL) ResolveMenuByParentID(req MenuRequest) (data 
 }
 
 func (r *MenuRepositoryPostgreSQL) ResolveMenuByRoleIDTrx(req MenuRequest) (data []MenuResponseTrx, err error) {
+	if req.RoleId == "HA01" {
+		criteria := ` WHERE m.level = 1 AND coalesce(m.is_deleted,false)=false ORDER BY m.seq ASC `
+		err = r.DB.Read.Select(&data, menuRoleQuery.SelectDTOTrx+criteria, req.RoleId)
+		if err != nil {
+			logger.ErrorWithStack(err)
+		}
+		return
+	}
+
 	criteria := ` WHERE m.level = 1 AND coalesce(m.is_deleted,false)=false ORDER BY m.seq ASC `
 	err = r.DB.Read.Select(&data, menuRoleQuery.SelectDTOTrx+criteria, req.RoleId)
 	if err != nil {
@@ -134,6 +153,15 @@ func (r *MenuRepositoryPostgreSQL) ResolveMenuByRoleIDTrx(req MenuRequest) (data
 }
 
 func (r *MenuRepositoryPostgreSQL) ResolveMenuByParentIDTrx(req MenuRequest) (data []MenuResponseTrx, err error) {
+	if req.RoleId == "HA01" {
+		criteria := ` WHERE coalesce(m.is_deleted,false) = false AND m.parent_id = $1 ORDER BY m.seq ASC `
+		err = r.DB.Read.Select(&data, menuRoleQuery.SelectDTOTrx+criteria, req.ParentId)
+		if err != nil {
+			logger.ErrorWithStack(err)
+		}
+		return
+	}
+
 	criteria := ` WHERE coalesce(m.is_deleted,false) = false AND m.parent_id = $2 ORDER BY m.seq ASC `
 	err = r.DB.Read.Select(&data, menuRoleQuery.SelectDTOTrx+criteria, req.RoleId, req.ParentId)
 	if err != nil {

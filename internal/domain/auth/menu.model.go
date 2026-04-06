@@ -137,19 +137,28 @@ type MenuRole struct {
 	MenuPermissions []string  `json:"menuPermissionList"`
 }
 type MenuResponse struct {
-	ID              string         `db:"id" json:"id"`
-	MenuID          string         `db:"menu_id" json:"menuId"`
-	RoleID          string         `db:"role_id" json:"roleId"`
-	Name            string         `db:"name" json:"name"`
-	Link            string         `db:"link" json:"link"`
-	Description     *string        `db:"description" json:"description"`
-	Icon            *string        `db:"icon" json:"icon"`
-	Level           int            `db:"level" json:"level"`
-	Seq             int            `db:"seq" json:"seq"`
-	PermissionLabel *string        `db:"permission_label" json:"permissionLabel"`
-	Permission      *string        `db:"permission" json:"permission"`
-	PermissionList  []string       `json:"permissionList"`
-	Children        []MenuResponse `json:"children"`
+	ID              string   `db:"id" json:"id"`
+	MenuID          string   `db:"menu_id" json:"menuId"`
+	RoleID          string   `db:"role_id" json:"roleId"`
+	Name            string   `db:"name" json:"name"`
+	Link            string   `db:"link" json:"link"`
+	Description     *string  `db:"description" json:"description"`
+	Icon            *string  `db:"icon" json:"icon"`
+	Level           int      `db:"level" json:"level"`
+	Seq             int      `db:"seq" json:"seq"`
+	ParentId        *string  `db:"parent_id" json:"parentId"`
+	PermissionLabel *string  `db:"permission_label" json:"permissionLabel"`
+	Action          *string  `db:"action" json:"action"`
+	Permission      *string  `db:"permission" json:"permission"`
+	PermissionList  []string `json:"permissionList"`
+	ParentMenu      *string  `db:"parent_menu" json:"parentMenu"`
+
+	Children  []MenuResponse `json:"children"`
+	CreatedAt *time.Time     `db:"created_at" json:"createdAt"`
+	CreatedBy *uuid.UUID     `db:"created_by" json:"createdBy"`
+	UpdatedAt *time.Time     `db:"updated_at" json:"updatedAt"`
+	UpdatedBy *uuid.UUID     `db:"updated_by" json:"updatedBy"`
+	IsDeleted bool           `db:"is_deleted" json:"isDeleted"`
 }
 type MenuResponseTrx struct {
 	ID              *string           `db:"id" json:"id"`

@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS public.auth_user
     email character varying(50) COLLATE pg_catalog."default" NOT NULL,
     password character varying(60) COLLATE pg_catalog."default" NOT NULL,
     role_id character varying(36) COLLATE pg_catalog."default" NOT NULL,
-    person_id integer,
     status character varying(1) COLLATE pg_catalog."default",
     foto character varying COLLATE pg_catalog."default",
     active boolean DEFAULT true,

@@ -497,14 +497,6 @@ INSERT INTO public.m_company (id, name, is_registered_partner, pic_contact, crea
 
 
 --
--- TOC entry 3369 (class 0 OID 336484)
--- Dependencies: 217
--- Data for Name: m_personnel; Type: TABLE DATA; Schema: public; Owner: offonfarm
---
-
-
-
---
 -- TOC entry 3370 (class 0 OID 336538)
 -- Dependencies: 218
 -- Data for Name: schema_migrations; Type: TABLE DATA; Schema: public; Owner: onlypkl
@@ -717,4 +709,3 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 --
 -- PostgreSQL database dump complete
 --
-

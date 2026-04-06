@@ -28,15 +28,14 @@ var (
 		resetImei,
 		UpdateFoto string
 	}{
-		Insert: `INSERT INTO auth_user (id, name, username, email, password, role_id, status, person_id, active, created_at, created_by) 
-			VALUES (:id, :name, :username, :email, :password, :role_id, :status, :person_id, :active, :created_at, :created_by) `,
+		Insert: `INSERT INTO auth_user (id, name, username, email, password, role_id, status, active, created_at, created_by) 
+			VALUES (:id, :name, :username, :email, :password, :role_id, :status, :active, :created_at, :created_by) `,
 		Exist: `SELECT COUNT(u.id) > 0 FROM auth_user u`,
-		Select: `SELECT u.id, u.name, u.username, u.email, u.password, u.status, u.person_id, u.role_id, u.foto, u.active, u.mobile_fcm_token, u.web_fcm_token, u.created_by, u.updated_by, u.created_at, u.updated_at, u.deleted_at, u.is_deleted 
+		Select: `SELECT u.id, u.name, u.username, u.email, u.password, u.status, u.role_id, u.foto, u.active, u.mobile_fcm_token, u.web_fcm_token, u.created_by, u.updated_by, u.created_at, u.updated_at, u.deleted_at, u.is_deleted 
 			FROM auth_user u `,
-		SelectDTO: `SELECT u.id, u.name, u.username, u.email, u.password, u.status, u.person_id, p.name as person_name, r.name as role, r.id as role_id, u.active 
+		SelectDTO: `SELECT u.id, u.name, u.username, u.email, u.password, u.status, r.name as role, r.id as role_id, u.active 
 			FROM auth_user u
 			left join auth_role r on r.id = u.role_id
-			left join m_personnel p on u.person_id = p.id
 			 `,
 		Count: `select count(u.id) from auth_user u 
 			left join auth_role r on r.id = u.role_id `,
@@ -47,7 +46,6 @@ var (
 			email=:email,
 			password=:password, 
 			status=:status, 
-			person_id=:person_id,
 			role_id=:role_id,
 			mobile_fcm_token=:mobile_fcm_token,
 			web_fcm_token=:web_fcm_token,
@@ -326,11 +324,6 @@ func (r *UserRepositoryPostgreSQL) ResolveAll(ctx context.Context, req model.Sta
 		searchRoleBuff.WriteString(" AND ")
 		searchRoleBuff.WriteString(" u.role_id = ?  ")
 		searchParams = append(searchParams, req.RoleID)
-	}
-
-	if req.PersonID != "" {
-		searchRoleBuff.WriteString(" AND u.person_id = ? ")
-		searchParams = append(searchParams, req.PersonID)
 	}
 
 	query := r.DB.Read.Rebind("select count(*) from (" + userQuery.SelectDTO + searchRoleBuff.String() + ")s")

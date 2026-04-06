@@ -16,11 +16,13 @@ type DomainHandlers struct {
 	UserHandler      handlers.UserHandler
 	AppConfigHandler handlers.AppConfigHandler
 	// Master
-	AcademicYearHandler handlers.AcademicYearHandler
-	CompanyHandler      handlers.CompanyHandler
-	DepartmentHandler   handlers.DepartmentHandler
-	PersonnelHandler    handlers.PersonnelHandler
-	RegistrationHandler handlers.RegistrationHandler
+	AcademicYearHandler     handlers.AcademicYearHandler
+	CompanyHandler          handlers.CompanyHandler
+	DepartmentHandler       handlers.DepartmentHandler
+	RegistrationHandler     handlers.RegistrationHandler
+	MentorAssignmentHandler handlers.MentorAssignmentHandler
+	LogbookHandler          handlers.LogbookHandler
+	TaskHandler             handlers.TaskHandler
 	// Transaction
 
 	// File
@@ -56,8 +58,10 @@ func (r *Router) SetupRoutes(mux *chi.Mux) {
 		r.DomainHandlers.AcademicYearHandler.Router(rc, r.JwtMiddleware)
 		r.DomainHandlers.CompanyHandler.Router(rc, r.JwtMiddleware)
 		r.DomainHandlers.DepartmentHandler.Router(rc, r.JwtMiddleware)
-		r.DomainHandlers.PersonnelHandler.Router(rc, r.JwtMiddleware)
 		r.DomainHandlers.RegistrationHandler.Router(rc, r.JwtMiddleware)
+		r.DomainHandlers.MentorAssignmentHandler.Router(rc, r.JwtMiddleware)
+		r.DomainHandlers.LogbookHandler.Router(rc, r.JwtMiddleware)
+		r.DomainHandlers.TaskHandler.Router(rc, r.JwtMiddleware)
 		// Transaction
 
 		// File

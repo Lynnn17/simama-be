@@ -20,7 +20,6 @@ type StandardRequest struct {
 	Status       string `json:"status" validate:"omitempty"`
 	IgnorePaging bool   `json:"ignorePaging" validate:"omitempty"`
 	RoleID       string `json:"roleId" validate:"omitempty"`
-	PersonID     string `json:"personId" validate:"omitempty"`
 }
 type StandardModel struct {
 	ID     string `json:"id" db:"id"`
@@ -37,7 +36,6 @@ type StandardRequestUser struct {
 	SortType   string `json:"sortType" validate:"required,oneof=asc ASC desc DESC"`
 	Active     bool   `json:"active" validate:"omitempty"`
 	RoleID     string `json:"roleId" validate:"omitempty"`
-	PersonID   string `json:"personId" validate:"omitempty"`
 }
 
 type StandardRequestMenu struct {
