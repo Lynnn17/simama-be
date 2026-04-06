@@ -1,4 +1,4 @@
-# ajinomoto-gate-system-be
+# simasa-be
 
 ## Getting started
 
