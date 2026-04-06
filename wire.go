@@ -102,13 +102,6 @@ var domainMaster = wire.NewSet(
 	// DepartmentRepository interface and implementation
 	master.ProvideDepartmentRepositoryPostgreSQL,
 	wire.Bind(new(master.DepartmentRepository), new(*master.DepartmentRepositoryPostgreSQL)),
-
-	// Personnel interface and implementation
-	master.ProvidePersonnelServiceImpl,
-	wire.Bind(new(master.PersonnelService), new(*master.PersonnelServiceImpl)),
-	// PersonnelRepository interface and implementation
-	master.ProvidePersonnelRepositoryPostgreSQL,
-	wire.Bind(new(master.PersonnelRepository), new(*master.PersonnelRepositoryPostgreSQL)),
 )
 
 var domainInternship = wire.NewSet(
@@ -116,6 +109,20 @@ var domainInternship = wire.NewSet(
 	wire.Bind(new(internship.RegistrationService), new(*internship.RegistrationServiceImpl)),
 	internship.ProvideRegistrationRepositoryPostgreSQL,
 	wire.Bind(new(internship.RegistrationRepository), new(*internship.RegistrationRepositoryPostgreSQL)),
+	internship.ProvideMentorAssignmentServiceImpl,
+	wire.Bind(new(internship.MentorAssignmentService), new(*internship.MentorAssignmentServiceImpl)),
+	internship.ProvideMentorAssignmentRepositoryPostgreSQL,
+	wire.Bind(new(internship.MentorAssignmentRepository), new(*internship.MentorAssignmentRepositoryPostgreSQL)),
+	internship.ProvideLogbookServiceImpl,
+	wire.Bind(new(internship.LogbookService), new(*internship.LogbookServiceImpl)),
+	internship.ProvideLogbookRepositoryPostgreSQL,
+	wire.Bind(new(internship.LogbookRepository), new(*internship.LogbookRepositoryPostgreSQL)),
+	internship.ProvideTaskServiceImpl,
+	wire.Bind(new(internship.TaskService), new(*internship.TaskServiceImpl)),
+	internship.ProvideTaskRepositoryPostgreSQL,
+	wire.Bind(new(internship.TaskRepository), new(*internship.TaskRepositoryPostgreSQL)),
+	internship.ProvideTaskFileRepositoryPostgreSQL,
+	wire.Bind(new(internship.TaskFileRepository), new(*internship.TaskFileRepositoryPostgreSQL)),
 )
 
 var domainTransaction = wire.NewSet()
@@ -135,8 +142,10 @@ var routing = wire.NewSet(
 	handlers.ProvideAcademicYearHandler,
 	handlers.ProvideCompanyHandler,
 	handlers.ProvideDepartmentHandler,
-	handlers.ProvidePersonnelHandler,
 	handlers.ProvideRegistrationHandler,
+	handlers.ProvideMentorAssignmentHandler,
+	handlers.ProvideLogbookHandler,
+	handlers.ProvideTaskHandler,
 	// Transaction
 	// File
 	handlers.ProvideFileHandler,

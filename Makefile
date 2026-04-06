@@ -3,8 +3,8 @@ include .env
 PROJECT_NAME=inventory
 MIGRATION_STEP=
 MIGRATION_PATH=script/migration
-DB_CONN=postgres://$(DB.POSTGRESQL.WRITE.USER:"%"=%):$(DB.POSTGRESQL.WRITE.PASSWORD:"%"=%)@$(DB.POSTGRESQL.WRITE.HOST:"%"=%):$(DB.POSTGRESQL.WRITE.PORT:"%"=%)/$(DB.POSTGRESQL.WRITE.NAME:"%"=%)?sslmode=$(DB.POSTGRESQL.WRITE.SSLMODE:"%"=%)
-
+# Simplified DB_CONN
+DB_CONN=postgres://${DB.POSTGRESQL.WRITE.USER}:${DB.POSTGRESQL.WRITE.PASSWORD}@${DB.POSTGRESQL.WRITE.HOST}:${DB.POSTGRESQL.WRITE.PORT}/${DB.POSTGRESQL.WRITE.NAME}?sslmode=disable
 # development
 dev: generate
 	go run github.com/cosmtrek/air

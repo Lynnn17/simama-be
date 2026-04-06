@@ -20,7 +20,6 @@ type User struct {
 	Email          *string    `json:"email" db:"email"`
 	Password       string     `json:"password" db:"password"`
 	RoleId         string     `json:"roleId" db:"role_id"`
-	PersonID       *int       `json:"personId" db:"person_id"`
 	Status         *string    `json:"status" db:"status"`
 	Foto           *string    `json:"foto" db:"foto"`
 	Active         bool       `db:"active" json:"active"`
@@ -42,7 +41,6 @@ type UserUpdateFormat struct {
 	Email          *string   `json:"email" db:"email"`
 	Password       string    `json:"password" db:"password"`
 	RoleId         string    `json:"roleId" db:"roleId"`
-	PersonID       *int      `json:"personId" db:"person_id"`
 	Status         *string   `json:"status" db:"status"`
 	Foto           *string   `json:"foto" db:"foto"`
 	MobileFcmToken string    `db:"mobile_fcm_token" json:"mobileFcmToken"`
@@ -60,18 +58,16 @@ type UserUpdateFcmTokenFormat struct {
 
 // UserDTO digunakan untuk model join ke Role
 type UserDTO struct {
-	ID         uuid.UUID `json:"id" db:"id"`
-	Name       string    `json:"name" db:"name"`
-	Username   string    `json:"username" db:"username"`
-	Email      *string   `json:"email" db:"email"`
-	Password   string    `json:"password" db:"password"`
-	RoleId     string    `json:"roleId" db:"role_id"`
-	PersonID   *int      `json:"personId" db:"person_id"`
-	PersonName *string   `json:"personName" db:"person_name"`
-	Role       *string   `json:"role" db:"role"`
-	Status     *string   `json:"status" db:"status"`
-	Foto       *string   `json:"foto" db:"foto"`
-	Active     bool      `db:"active" json:"active"`
+	ID       uuid.UUID `json:"id" db:"id"`
+	Name     string    `json:"name" db:"name"`
+	Username string    `json:"username" db:"username"`
+	Email    *string   `json:"email" db:"email"`
+	Password string    `json:"password" db:"password"`
+	RoleId   string    `json:"roleId" db:"role_id"`
+	Role     *string   `json:"role" db:"role"`
+	Status   *string   `json:"status" db:"status"`
+	Foto     *string   `json:"foto" db:"foto"`
+	Active   bool      `db:"active" json:"active"`
 }
 
 // UserDTO digunakan untuk model join ke Role
@@ -116,7 +112,6 @@ type InputUser struct {
 	Username string  `json:"username" db:"username"`
 	Email    *string `json:"email" db:"email"`
 	Password string  `json:"password" db:"password"`
-	PersonID *int    `json:"personId" db:"person_id"`
 	RoleId   string  `json:"roleId" db:"roleId"`
 	Status   *string `json:"status" db:"status"`
 	Active   bool    `db:"active" json:"active"`
@@ -143,7 +138,6 @@ func (i InputUser) CreateUser() User {
 		Name:      i.Name,
 		Status:    i.Status,
 		Password:  string(hash),
-		PersonID:  i.PersonID,
 		Email:     i.Email,
 		CreatedAt: &now,
 	}
@@ -186,7 +180,6 @@ func (i InputChangePassword) Update(user User) (User, error) {
 	return User{
 		ID:        user.ID,
 		RoleId:    user.RoleId,
-		PersonID:  user.PersonID,
 		Username:  user.Username,
 		Password:  string(newPassword),
 		Email:     user.Email,
@@ -201,7 +194,6 @@ func (i InputChangePassword) ResetPasswdUpdate(user User) (User, error) {
 	return User{
 		ID:       user.ID,
 		RoleId:   user.RoleId,
-		PersonID: user.PersonID,
 		Username: user.Username,
 		Password: string(newPassword),
 	}, nil
@@ -214,7 +206,6 @@ func (i UserUpdateFormat) Update(user UserUpdateFormat) (User, error) {
 	return User{
 		ID:        user.ID,
 		RoleId:    user.RoleId,
-		PersonID:  user.PersonID,
 		Username:  user.Username,
 		Name:      user.Name,
 		Status:    user.Status,
@@ -228,7 +219,6 @@ func (u *User) UpdateUserFormat(id uuid.UUID, user UserUpdateFormat) {
 	now := time.Now()
 	u.ID = user.ID
 	u.RoleId = user.RoleId
-	u.PersonID = user.PersonID
 	u.Username = user.Username
 	u.Name = user.Name
 	u.Email = user.Email
@@ -275,16 +265,14 @@ func (r *InputLogin) Response(user UserDTO, role Role, accessToken string) Respo
 			AccessToken: accessToken,
 		},
 		User: ResponseLoginUser{
-			ID:         user.ID,
-			RoleId:     user.RoleId,
-			PersonID:   user.PersonID,
-			PersonName: user.PersonName,
-			Username:   user.Username,
-			Name:       user.Name,
-			Status:     user.Status,
-			Email:      user.Email,
-			Foto:       user.Foto,
-			Role:       role,
+			ID:       user.ID,
+			RoleId:   user.RoleId,
+			Username: user.Username,
+			Name:     user.Name,
+			Status:   user.Status,
+			Email:    user.Email,
+			Foto:     user.Foto,
+			Role:     role,
 		},
 	}
 }
@@ -303,8 +291,6 @@ type ResponseLoginUser struct {
 	Email         *string   `json:"email" db:"email"`
 	Status        *string   `json:"status" db:"status"`
 	RoleId        string    `json:"roleId" db:"role_id"`
-	PersonID      *int      `json:"personId" db:"person_id"`
-	PersonName    *string   `json:"personName" db:"person_name"`
 	FirebaseToken *string   `json:"firebaseToken"`
 	Foto          *string   `json:"foto" db:"foto"`
 	Role          Role      `json:"role"`
@@ -322,7 +308,6 @@ func NewUserLoginClaims(user UserDTO, expiredIn int) jwt.MapClaims {
 	claims["roleId"] = user.RoleId
 	claims["iat"] = time.Now().Unix()
 	claims["exp"] = time.Now().Add(time.Duration(expiredIn) * time.Hour).Unix()
-	claims["personId"] = user.PersonID
 
 	return claims
 }
@@ -370,7 +355,6 @@ var ColumnMappUser = map[string]interface{}{
 	"password":   "u.password",
 	"roleId":     "u.role_id",
 	"role":       "r.name",
-	"personId":   "u.person_id",
 	"personName": "p.name",
 	"createdAt":  "u.created_at",
 	"updatedAt":  "u.updated_at",
