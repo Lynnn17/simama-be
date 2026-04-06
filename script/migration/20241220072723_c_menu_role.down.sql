@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.c_menu_role;

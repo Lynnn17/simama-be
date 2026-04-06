@@ -1,0 +1,13 @@
+version: "3.3"
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: material-tracking-rpa-ajinomoto
+    restart: always
+    ports:
+      - 8077:8077
+    volumes:
+      - ./.env:/app/.env:Z
+      - ../files:/app/files/:Z

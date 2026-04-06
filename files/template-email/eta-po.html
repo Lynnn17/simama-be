@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Reminder Schedule PO</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#e6e6e6; margin:0; padding:20px; color:#111; }
+  .container { max-width:720px; margin:0 auto; background:#ffffff; box-shadow:0 2px 8px rgba(12,18,28,0.06); overflow:hidden; }
+  .header { padding:68px 24px 20px 24px; border-top: 10px solid #fe0f0f; }
+  .header h1 { margin:4px 0; font-size:18px; font-weight:600; }
+  .header p { margin:6px 0 0; font-size:13px; opacity:0.95; }
+  .content { padding:20px 24px; }
+  .intro { font-size:14px; margin-bottom:14px; }
+  .items { width:100%; border-collapse:collapse; margin-bottom:18px; }
+  .items th, .items td { border-bottom:1px solid #eef2f6; padding:12px 8px; text-align:left; font-size:14px; }
+  .items th { background:#fafbfd; font-weight:600; color:#253858; font-size:13px; }
+  .cta { display:inline-block; padding:10px 16px; background:#fe0f0f; color:#fff; text-decoration:none; border-radius:6px; font-weight:600; }
+  .foot { padding:20px 24px; font-size:12px; color:#475569; background:whitesmoke; }
+  .muted { color:#6b7280; font-size:13px; }
+  .tag { display:inline-block; padding:4px 8px; background:#fff4e6; color:#b45309; border-radius:999px; font-size:12px; border:1px solid #ffe7c2; }
+  @media (max-width:600px){ .items th,.items td{font-size:13px} .header h1{font-size:16px} }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>{{.CompanyName}}</h1>
+      <h1>Pengingat Pengiriman — ETA Mendatang</h1>
+      <p>{{.Now}}</p>
+    </div>
+
+    <div class="content">
+      <p class="intro">
+        Halo {{.RecipientName}},
+        <br/>
+        Berikut item yang <strong>akan mencapai estimasi waktu pengiriman dalam {{.DaysLeft}} hari</strong>. Mohon tinjau dan lakukan tindakan yang diperlukan.
+      </p>
+
+      <table class="items" role="presentation">
+        <thead>
+          <tr>
+            <th>Item Code</th>
+            <th>Item Name</th>
+            <th>Qty</th>
+            <th>PO / Ref</th>
+            <th>Eta</th>
+          </tr>
+        </thead>
+        <tbody>
+        {{range .Items}}
+          <tr>
+            <td>{{.ItemCode}}</td>
+            <td>{{.ItemName}}</td>
+            <td>{{.Qty}}</td>
+            <td>{{if .ScheduleTag}}{{.ScheduleTag}}{{else}}-{{end}}</td>
+            <td>{{.Eta}}</td>
+          </tr>
+        {{end}}
+        </tbody>
+      </table>
+    </div>
+    <div class="foot">
+      <p class="muted">
+        Perhatian : Jangan balas email ini, Email ini dikirim otomatis oleh sistem notifikasi. Jika ada pertanyaan atau perlu tindak lanjut silahkan hubungi tim {{.CompanyEmail}}
+      </p>
+    </div>
+  </div>
+</body>
+</html>
