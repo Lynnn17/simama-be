@@ -84,11 +84,7 @@ func (h *LogSystemHandler) CreateLogSystem(w http.ResponseWriter, r *http.Reques
 // @Failure 500 {object} response.Base
 // @Router /v1/log-system [get]
 func (h *LogSystemHandler) ResolveAll(w http.ResponseWriter, r *http.Request) {
-	roleId := middleware.GetClaimsValue(r.Context(), "roleId").(string)
-	if roleId != "HA01" {
-		response.WithError(w, failure.Unauthorized("Access denied"))
-		return
-	}
+
 	keyword := r.URL.Query().Get("q")
 	pageSizeStr := r.URL.Query().Get("pageSize")
 	pageNumberStr := r.URL.Query().Get("pageNumber")

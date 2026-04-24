@@ -5,12 +5,15 @@ import (
 	"errors"
 
 	"github.com/gofrs/uuid/v5"
+
+	"lms-be/shared/pagination"
 )
 
 type MentorAssignmentService interface {
 	Create(ctx context.Context, req RequestMentorAssignmentFormat) (newMentorAssignment MentorAssignment, err error)
 	GetStudentsByMentorID(ctx context.Context, mentorID uuid.UUID) (data []MentorAssignmentDTO, err error)
 	ResolveMentorByStudentID(ctx context.Context, studentID uuid.UUID) (data MentorAssignmentDTO, err error)
+	ResolveAll(ctx context.Context, req RequestMentorAssignmentListFormat) (data pagination.Response, err error)
 }
 
 type MentorAssignmentServiceImpl struct {
@@ -26,6 +29,9 @@ func ProvideMentorAssignmentServiceImpl(repository MentorAssignmentRepository) *
 func (s *MentorAssignmentServiceImpl) Create(ctx context.Context, req RequestMentorAssignmentFormat) (newMentorAssignment MentorAssignment, err error) {
 	if req.MentorID == uuid.Nil || req.StudentID == uuid.Nil {
 		return MentorAssignment{}, errors.New("mentor id and student id are required")
+	}
+	if req.AssignedBy == uuid.Nil {
+		return MentorAssignment{}, errors.New("assigned by is required")
 	}
 
 	exist, err := s.MentorAssignmentRepository.ExistByStudentID(ctx, req.StudentID)
@@ -60,4 +66,8 @@ func (s *MentorAssignmentServiceImpl) ResolveMentorByStudentID(ctx context.Conte
 		return MentorAssignmentDTO{}, err
 	}
 	return data, nil
+}
+
+func (s *MentorAssignmentServiceImpl) ResolveAll(ctx context.Context, req RequestMentorAssignmentListFormat) (data pagination.Response, err error) {
+	return s.MentorAssignmentRepository.ResolveAll(ctx, req)
 }

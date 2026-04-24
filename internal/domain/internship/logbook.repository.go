@@ -21,11 +21,11 @@ var LogbookQuery = struct {
 	SelectStudentDTO: `SELECT l.id, l.student_id, s.name AS student_name, ma.mentor_id, mentor.name AS mentor_name, l.log_date, l.activities, l.blockers, l.plan_tomorrow, l.evidence_url, l.status, l.notes, l.submitted_at, l.reviewed_at, l.reviewed_by
 		FROM logbooks l
 		LEFT JOIN auth_user s ON s.id = l.student_id
-		LEFT JOIN mentor_assignments ma ON ma.student_id = l.student_id
+		LEFT JOIN mentor_assignments ma ON ma.student_id = l.student_id AND ma.is_active = true
 		LEFT JOIN auth_user mentor ON mentor.id = ma.mentor_id`,
 	SelectMentorDTO: `SELECT l.id, l.student_id, s.name AS student_name, ma.mentor_id, mentor.name AS mentor_name, l.log_date, l.activities, l.blockers, l.plan_tomorrow, l.evidence_url, l.status, l.notes, l.submitted_at, l.reviewed_at, l.reviewed_by
 		FROM logbooks l
-		INNER JOIN mentor_assignments ma ON ma.student_id = l.student_id
+		INNER JOIN mentor_assignments ma ON ma.student_id = l.student_id AND ma.is_active = true
 		LEFT JOIN auth_user s ON s.id = l.student_id
 		LEFT JOIN auth_user mentor ON mentor.id = ma.mentor_id`,
 	Insert: `INSERT INTO logbooks

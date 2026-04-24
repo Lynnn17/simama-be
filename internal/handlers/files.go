@@ -42,6 +42,7 @@ func (h *FileHandler) Router(r chi.Router, middleware *middleware.JWT) {
 			r.Get("/", h.ReadFile)
 			r.Post("/upload", h.UploadFile)
 			r.Get("/image", h.ReadImage)
+			r.Get("/{folder}/{filename}", h.ReadFileByFolder)
 		})
 	})
 }
@@ -99,6 +100,43 @@ func (h *FileHandler) ReadFileParams(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer img.Close()
+	io.Copy(w, img)
+}
+func (h *FileHandler) ReadFileByFolder(w http.ResponseWriter, r *http.Request) {
+	folder := chi.URLParam(r, "folder")
+	filename := chi.URLParam(r, "filename")
+	dir := h.Config.App.File.Dir
+
+	path := filepath.Join(folder, filename)
+
+	// Validate path to prevent path traversal attacks
+	fileLocation, err := isPathSafe(dir, path)
+	if err != nil {
+		http.Error(w, "Access Denied", http.StatusForbidden)
+		return
+	}
+
+	img, err := os.Open(fileLocation)
+
+	if err != nil {
+		http.Error(w, "File Not Found", http.StatusNotFound)
+		return
+	}
+	defer img.Close()
+
+	// Detect content type
+	ext := filepath.Ext(filename)
+	contentType := "application/octet-stream"
+	switch strings.ToLower(ext) {
+	case ".pdf":
+		contentType = "application/pdf"
+	case ".jpg", ".jpeg":
+		contentType = "image/jpeg"
+	case ".png":
+		contentType = "image/png"
+	}
+	w.Header().Set("Content-Type", contentType)
+
 	io.Copy(w, img)
 }
 

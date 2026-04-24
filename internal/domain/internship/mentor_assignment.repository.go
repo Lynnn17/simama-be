@@ -1,6 +1,7 @@
 package internship
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 
 	"lms-be/infras"
 	"lms-be/shared/logger"
+	"lms-be/shared/pagination"
 )
 
 var MentorAssignmentQuery = struct {
@@ -16,18 +18,20 @@ var MentorAssignmentQuery = struct {
 	SelectByStudentID string
 	Insert            string
 	ExistByStudentID  string
+	Count             string
 }{
-	SelectByMentorID: `SELECT ma.id, ma.mentor_id, mentor.name AS mentor_name, ma.student_id, student.name AS student_name
+	SelectByMentorID: `SELECT ma.id, ma.mentor_id, mentor.name AS mentor_name, ma.student_id, student.name AS student_name, ma.assigned_by, ma.assigned_at, ma.is_active
 		FROM mentor_assignments ma
 		LEFT JOIN auth_user mentor ON mentor.id = ma.mentor_id
 		LEFT JOIN auth_user student ON student.id = ma.student_id`,
-	SelectByStudentID: `SELECT ma.id, ma.mentor_id, mentor.name AS mentor_name, ma.student_id, student.name AS student_name
+	SelectByStudentID: `SELECT ma.id, ma.mentor_id, mentor.name AS mentor_name, ma.student_id, student.name AS student_name, ma.assigned_by, ma.assigned_at, ma.is_active
 		FROM mentor_assignments ma
 		LEFT JOIN auth_user mentor ON mentor.id = ma.mentor_id
 		LEFT JOIN auth_user student ON student.id = ma.student_id`,
-	Insert: `INSERT INTO mentor_assignments (id, mentor_id, student_id)
-		VALUES (:id, :mentor_id, :student_id) RETURNING id`,
+	Insert: `INSERT INTO mentor_assignments (id, mentor_id, student_id, assigned_by, assigned_at, is_active)
+		VALUES (:id, :mentor_id, :student_id, :assigned_by, :assigned_at, :is_active) RETURNING id`,
 	ExistByStudentID: `SELECT id FROM mentor_assignments`,
+	Count:            `SELECT count(id) FROM mentor_assignments`,
 }
 
 type MentorAssignmentRepository interface {
@@ -35,6 +39,7 @@ type MentorAssignmentRepository interface {
 	GetStudentsByMentorID(ctx context.Context, mentorID uuid.UUID) (data []MentorAssignmentDTO, err error)
 	ResolveMentorByStudentID(ctx context.Context, studentID uuid.UUID) (data MentorAssignmentDTO, err error)
 	ExistByStudentID(ctx context.Context, studentID uuid.UUID) (bool, error)
+	ResolveAll(ctx context.Context, req RequestMentorAssignmentListFormat) (data pagination.Response, err error)
 }
 
 type MentorAssignmentRepositoryPostgreSQL struct {
@@ -64,7 +69,7 @@ func (r *MentorAssignmentRepositoryPostgreSQL) Create(ctx context.Context, data 
 }
 
 func (r *MentorAssignmentRepositoryPostgreSQL) GetStudentsByMentorID(ctx context.Context, mentorID uuid.UUID) (data []MentorAssignmentDTO, err error) {
-	query := r.DB.Read.Rebind(MentorAssignmentQuery.SelectByMentorID + " WHERE ma.mentor_id = ? ORDER BY student_name ASC")
+	query := r.DB.Read.Rebind(MentorAssignmentQuery.SelectByMentorID + " WHERE ma.mentor_id = ? AND ma.is_active = true ORDER BY student_name ASC")
 	rows, err := r.DB.Read.QueryxContext(ctx, query, mentorID)
 	if err == sql.ErrNoRows {
 		return data, nil
@@ -88,7 +93,7 @@ func (r *MentorAssignmentRepositoryPostgreSQL) GetStudentsByMentorID(ctx context
 }
 
 func (r *MentorAssignmentRepositoryPostgreSQL) ResolveMentorByStudentID(ctx context.Context, studentID uuid.UUID) (data MentorAssignmentDTO, err error) {
-	query := r.DB.Read.Rebind(MentorAssignmentQuery.SelectByStudentID + " WHERE ma.student_id = ?")
+	query := r.DB.Read.Rebind(MentorAssignmentQuery.SelectByStudentID + " WHERE ma.student_id = ? AND ma.is_active = true")
 	err = r.DB.Read.GetContext(ctx, &data, query, studentID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -102,7 +107,7 @@ func (r *MentorAssignmentRepositoryPostgreSQL) ResolveMentorByStudentID(ctx cont
 
 func (r *MentorAssignmentRepositoryPostgreSQL) ExistByStudentID(ctx context.Context, studentID uuid.UUID) (bool, error) {
 	var idResult uuid.UUID
-	query := r.DB.Read.Rebind(MentorAssignmentQuery.ExistByStudentID + " WHERE student_id = ?")
+	query := r.DB.Read.Rebind(MentorAssignmentQuery.ExistByStudentID + " WHERE student_id = ? AND is_active = true")
 	err := r.DB.Read.GetContext(ctx, &idResult, query, studentID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -112,6 +117,48 @@ func (r *MentorAssignmentRepositoryPostgreSQL) ExistByStudentID(ctx context.Cont
 		return false, err
 	}
 	return true, nil
+}
+
+func (r *MentorAssignmentRepositoryPostgreSQL) ResolveAll(ctx context.Context, req RequestMentorAssignmentListFormat) (data pagination.Response, err error) {
+	var totalData int
+	countQuery := r.DB.Read.Rebind(MentorAssignmentQuery.Count)
+	err = r.DB.Read.QueryRowContext(ctx, countQuery).Scan(&totalData)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
+
+	if totalData < 1 {
+		data.Items = make([]interface{}, 0)
+		data.Meta = pagination.CreateMeta(totalData, req.PageSize, req.PageNumber)
+		return
+	}
+
+	var searchBuff bytes.Buffer
+	searchBuff.WriteString(" ORDER BY assigned_at DESC ")
+	searchBuff.WriteString(" LIMIT ? OFFSET ? ")
+
+	offset := (req.PageNumber - 1) * req.PageSize
+	query := r.DB.Read.Rebind(MentorAssignmentQuery.SelectByMentorID + searchBuff.String())
+	rows, err := r.DB.Read.QueryxContext(ctx, query, req.PageSize, offset)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var assignment MentorAssignmentDTO
+		err = rows.StructScan(&assignment)
+		if err != nil {
+			logger.ErrorWithStack(err)
+			return
+		}
+		data.Items = append(data.Items, assignment)
+	}
+
+	data.Meta = pagination.CreateMeta(totalData, req.PageSize, req.PageNumber)
+	return
 }
 
 func (r *MentorAssignmentRepositoryPostgreSQL) String() string {
