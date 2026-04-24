@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"io"
 	"lms-be/configs"
-	"lms-be/internal/domain/auth"
 	"lms-be/shared/logger"
 	"mime/multipart"
 	"mime/quotedprintable"
@@ -58,17 +57,17 @@ func encodeBase64(dst *bytes.Buffer, r io.Reader) error {
 	return encoder.Close()
 }
 
-func SendMail(config auth.AppConfigDTO, to []string, cc []string, subject, message string, attachments []string) error {
+func SendMail(config *configs.Config, to []string, cc []string, subject, message string, attachments []string) error {
 	// setup smtp
-	smtpAddr := fmt.Sprintf("%s:%d", config.SmtpHost, config.SmtpPort)
-	auth := smtp.PlainAuth("", config.SmtpEmail, config.SmtpPassword, config.SmtpHost)
+	smtpAddr := fmt.Sprintf("%s:%d", config.App.SMTP.Host, config.App.SMTP.Port)
+	auth := smtp.PlainAuth("", config.App.SMTP.AuthEmail, config.App.SMTP.AuthPassword, config.App.SMTP.Host)
 
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
 
 	// header umum
 	headers := make(map[string]string)
-	headers["From"] = fmt.Sprintf("%s <%s>", config.CompanyName, config.SmtpEmail)
+	headers["From"] = fmt.Sprintf("%s <%s>", config.App.SMTP.SenderName, config.App.SMTP.AuthEmail)
 	headers["To"] = strings.Join(to, ", ")
 	if len(cc) > 0 {
 		headers["Cc"] = strings.Join(cc, ", ")
@@ -142,5 +141,5 @@ func SendMail(config auth.AppConfigDTO, to []string, cc []string, subject, messa
 
 	// kirim
 	allRecipients := append(to, cc...)
-	return smtp.SendMail(smtpAddr, auth, config.SmtpEmail, allRecipients, buf.Bytes())
+	return smtp.SendMail(smtpAddr, auth, config.App.SMTP.AuthEmail, allRecipients, buf.Bytes())
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi"
 	"github.com/gofrs/uuid/v5"
@@ -30,6 +31,7 @@ func (h *MentorAssignmentHandler) Router(r chi.Router, middleware *middleware.JW
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.VerifyToken)
 			r.Post("/", h.Create)
+			r.Get("/", h.ResolveAll)
 			r.Get("/mentor/{mentorId}/students", h.GetStudentsByMentorID)
 			r.Get("/student/{studentId}", h.ResolveMentorByStudentID)
 		})
@@ -49,11 +51,6 @@ func (h *MentorAssignmentHandler) Router(r chi.Router, middleware *middleware.JW
 // @Failure 500 {object} response.Base
 // @Router /v1/internship/mentor-assignment [post]
 func (h *MentorAssignmentHandler) Create(w http.ResponseWriter, r *http.Request) {
-	roleID := middleware.GetClaimsValue(r.Context(), "roleId").(string)
-	if roleID != "HA01" {
-		response.WithError(w, failure.Unauthorized("Access denied"))
-		return
-	}
 
 	var req internship.RequestMentorAssignmentFormat
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -61,6 +58,13 @@ func (h *MentorAssignmentHandler) Create(w http.ResponseWriter, r *http.Request)
 		response.WithError(w, failure.BadRequest(err))
 		return
 	}
+
+	assignedBy, err := uuid.FromString(middleware.GetClaimsValue(r.Context(), "userId").(string))
+	if err != nil {
+		response.WithError(w, failure.BadRequest(err))
+		return
+	}
+	req.AssignedBy = assignedBy
 
 	err = shared.GetValidator().Struct(req)
 	if err != nil {
@@ -123,6 +127,57 @@ func (h *MentorAssignmentHandler) ResolveMentorByStudentID(w http.ResponseWriter
 	}
 
 	data, err := h.MentorAssignmentService.ResolveMentorByStudentID(r.Context(), studentID)
+	if err != nil {
+		response.WithError(w, err)
+		return
+	}
+
+	response.WithJSON(w, http.StatusOK, data)
+}
+
+// @Summary Get all mentor assignments with pagination
+// @Description Endpoint ini digunakan untuk mengambil data penugasan mentor dengan pagination.
+// @Tags Mentor Assignment
+// @Produce json
+// @Security BearerAuth
+// @Param pageSize query int false "Page size"
+// @Param pageNumber query int false "Page number"
+// @Success 200 {object} response.Base{data=pagination.Response}
+// @Failure 400 {object} response.Base
+// @Failure 401 {object} response.Base
+// @Failure 500 {object} response.Base
+// @Router /v1/internship/mentor-assignment/ [get]
+func (h *MentorAssignmentHandler) ResolveAll(w http.ResponseWriter, r *http.Request) {
+
+	pageSize := 10
+	pageNumber := 1
+
+	pageSizeStr := r.URL.Query().Get("pageSize")
+	if pageSizeStr != "" {
+		parsed, err := strconv.Atoi(pageSizeStr)
+		if err != nil {
+			response.WithError(w, failure.BadRequest(err))
+			return
+		}
+		pageSize = parsed
+	}
+
+	pageNumberStr := r.URL.Query().Get("pageNumber")
+	if pageNumberStr != "" {
+		parsed, err := strconv.Atoi(pageNumberStr)
+		if err != nil {
+			response.WithError(w, failure.BadRequest(err))
+			return
+		}
+		pageNumber = parsed
+	}
+
+	req := internship.RequestMentorAssignmentListFormat{
+		PageSize:   pageSize,
+		PageNumber: pageNumber,
+	}
+
+	data, err := h.MentorAssignmentService.ResolveAll(r.Context(), req)
 	if err != nil {
 		response.WithError(w, err)
 		return

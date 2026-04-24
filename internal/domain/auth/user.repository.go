@@ -373,7 +373,13 @@ func (r *UserRepositoryPostgreSQL) GetAll(ctx context.Context, req model.Standar
 	var searchParams []interface{}
 	var searchRoleBuff bytes.Buffer
 	searchRoleBuff.WriteString(" WHERE coalesce(u.is_deleted, false) = false ")
-	searchRoleBuff.WriteString(" ORDER BY id ASC ")
+
+	if req.RoleID != "" {
+		searchRoleBuff.WriteString(" AND u.role_id = ? ")
+		searchParams = append(searchParams, req.RoleID)
+	}
+
+	searchRoleBuff.WriteString(" ORDER BY name ASC ")
 	query := r.DB.Read.Rebind(userQuery.Select + searchRoleBuff.String())
 	rows, err := r.DB.Read.QueryxContext(ctx, query, searchParams...)
 	if err == sql.ErrNoRows {

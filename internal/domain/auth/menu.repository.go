@@ -19,12 +19,12 @@ var (
 		Select, SelectDTO, Insert, Update, Count, Urutan string
 	}{
 		Select: `SELECT id, name, link, description, icon, permission_label, action, level, seq, parent_id, created_at, updated_at, created_by, updated_by, is_deleted from c_menu `,
-		SelectDTO: `SELECT m.id, m.name, m.link, m.description, m.icon, m.permission_label, m.action, m.level, m.seq, m.parent_id, 
+		SelectDTO: `SELECT m.id, m.name, m.link, m.description, m.icon, m.permission_label, m.action, m.level, m.seq, m.parent_id,
 			m.created_at, m.updated_at, m.created_by, m.updated_by, m.is_deleted, cm.name parent_menu from c_menu m
 			LEFT JOIN c_menu cm ON m.parent_id = cm.id `,
-		Insert: `Insert into c_menu(id, name, link, description, icon, permission_label, action, level, seq, parent_id, created_at, created_by) 
+		Insert: `Insert into c_menu(id, name, link, description, icon, permission_label, action, level, seq, parent_id, created_at, created_by)
 			values (:id, :name, :link, :description, :icon, :permission_label, :action, :level, :seq, :parent_id, :created_at, :created_by)`,
-		Update: `Update c_menu set 
+		Update: `Update c_menu set
 			id=:id,
 			name=:name,
 			link=:link,
@@ -35,8 +35,8 @@ var (
 			level=:level,
 			seq=:seq,
 			parent_id=:parent_id,
-			updated_at=:updated_at, 
-			updated_by=:updated_by, 
+			updated_at=:updated_at,
+			updated_by=:updated_by,
 			is_deleted=:is_deleted `,
 		Count:  `Select count(id) from c_menu`,
 		Urutan: `select coalesce(max(seq),0) + 1 as urutan from c_menu mu `,
@@ -53,11 +53,11 @@ var (
 		InsertBulkPlaceholder string
 	}{
 		Select: `SELECT id, menu_id, role_id, permission, created_at from c_menu_role `,
-		SelectDTO: `SELECT mr.id, mr.menu_id, m.name, m.link, m.description, m.icon, m.level, m.seq, m.permission_label, mr.permission 
-			FROM c_menu_role mr 
-			JOIN c_menu m on mr.menu_id = m.id	
+		SelectDTO: `SELECT mr.id, mr.menu_id, m.name, m.link, m.description, m.icon, m.level, m.seq, m.permission_label, mr.permission
+			FROM c_menu_role mr
+			JOIN c_menu m on mr.menu_id = m.id
 		 `,
-		SelectDTOTrx: ` SELECT mr.id, m.id menu_id, m.name, m.link, m.description, m.icon, m.level, m.seq, 
+		SelectDTOTrx: ` SELECT mr.id, m.id menu_id, m.name, m.link, m.description, m.icon, m.level, m.seq,
 			m.permission_label, m.action, mr.permission FROM c_menu m
 			LEFT JOIN (
 				SELECT mr.id, mr.menu_id, mr.permission from c_menu_role mr
@@ -100,7 +100,7 @@ func ProvideMenuRepositoryPostgreSQL(db *infras.PostgresqlConn) *MenuRepositoryP
 
 func (r *MenuRepositoryPostgreSQL) ResolveMenuByRoleID(req MenuRequest) (data []MenuResponse, err error) {
 
-	criteria := ` WHERE m.level = 1 AND coalesce(m.is_deleted,false)=false AND mr.role_id::varchar=$1 
+	criteria := ` WHERE m.level = 1 AND coalesce(m.is_deleted,false)=false AND mr.role_id::varchar=$1
 		AND mr.permission ilike '%VIEW%' ORDER BY m.seq ASC `
 	err = r.DB.Read.Select(&data, menuRoleQuery.SelectDTO+criteria, req.RoleId)
 	if err != nil {
@@ -112,16 +112,7 @@ func (r *MenuRepositoryPostgreSQL) ResolveMenuByRoleID(req MenuRequest) (data []
 }
 
 func (r *MenuRepositoryPostgreSQL) ResolveMenuByParentID(req MenuRequest) (data []MenuResponse, err error) {
-	if req.RoleId == "HA01" {
-		criteria := ` WHERE coalesce(m.is_deleted,false)=false AND m.parent_id::varchar=$1 ORDER BY m.seq ASC `
-		err = r.DB.Read.Select(&data, menuQuery.SelectDTO+criteria, req.ParentId)
-		if err != nil {
-			logger.ErrorWithStack(err)
-		}
-		return
-	}
-
-	criteria := ` WHERE coalesce(m.is_deleted,false)=false AND mr.role_id::varchar=$1 AND m.parent_id::varchar=$2 
+	criteria := ` WHERE coalesce(m.is_deleted,false)=false AND mr.role_id::varchar=$1 AND m.parent_id::varchar=$2
 		AND mr.permission ilike '%VIEW%' ORDER BY m.seq ASC `
 	err = r.DB.Read.Select(&data, menuRoleQuery.SelectDTO+criteria, req.RoleId, req.ParentId)
 	if err != nil {
@@ -133,15 +124,6 @@ func (r *MenuRepositoryPostgreSQL) ResolveMenuByParentID(req MenuRequest) (data 
 }
 
 func (r *MenuRepositoryPostgreSQL) ResolveMenuByRoleIDTrx(req MenuRequest) (data []MenuResponseTrx, err error) {
-	if req.RoleId == "HA01" {
-		criteria := ` WHERE m.level = 1 AND coalesce(m.is_deleted,false)=false ORDER BY m.seq ASC `
-		err = r.DB.Read.Select(&data, menuRoleQuery.SelectDTOTrx+criteria, req.RoleId)
-		if err != nil {
-			logger.ErrorWithStack(err)
-		}
-		return
-	}
-
 	criteria := ` WHERE m.level = 1 AND coalesce(m.is_deleted,false)=false ORDER BY m.seq ASC `
 	err = r.DB.Read.Select(&data, menuRoleQuery.SelectDTOTrx+criteria, req.RoleId)
 	if err != nil {
@@ -153,14 +135,6 @@ func (r *MenuRepositoryPostgreSQL) ResolveMenuByRoleIDTrx(req MenuRequest) (data
 }
 
 func (r *MenuRepositoryPostgreSQL) ResolveMenuByParentIDTrx(req MenuRequest) (data []MenuResponseTrx, err error) {
-	if req.RoleId == "HA01" {
-		criteria := ` WHERE coalesce(m.is_deleted,false) = false AND m.parent_id = $1 ORDER BY m.seq ASC `
-		err = r.DB.Read.Select(&data, menuRoleQuery.SelectDTOTrx+criteria, req.ParentId)
-		if err != nil {
-			logger.ErrorWithStack(err)
-		}
-		return
-	}
 
 	criteria := ` WHERE coalesce(m.is_deleted,false) = false AND m.parent_id = $2 ORDER BY m.seq ASC `
 	err = r.DB.Read.Select(&data, menuRoleQuery.SelectDTOTrx+criteria, req.RoleId, req.ParentId)
@@ -414,8 +388,8 @@ func ComposeBulkUpsertMenuRoleQuery(details []MenuRole) (qResult string, params 
 		values = append(values, q)
 		params = append(params, args...)
 	}
-	qResult = fmt.Sprintf(`%v %v 
-						ON CONFLICT (id) 
+	qResult = fmt.Sprintf(`%v %v
+						ON CONFLICT (id)
 						DO UPDATE SET permission=EXCLUDED.permission `, menuRoleQuery.InsertBulk, strings.Join(values, ","))
 	return
 }

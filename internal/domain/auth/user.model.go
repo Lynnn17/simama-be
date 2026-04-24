@@ -139,6 +139,7 @@ func (i InputUser) CreateUser() User {
 		Status:    i.Status,
 		Password:  string(hash),
 		Email:     i.Email,
+		Active:    i.Active,
 		CreatedAt: &now,
 	}
 
@@ -155,6 +156,7 @@ func (i InputUser) Registrasi() User {
 		RoleId:   i.RoleId,
 		Username: i.Username,
 		Password: string(hash),
+		Active:   i.Active,
 	}
 }
 

@@ -415,7 +415,9 @@ func (h *UserHandler) ResolveAll(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} response.Base
 // @Router /v1/user/all [get]
 func (h *UserHandler) GetAllData(w http.ResponseWriter, r *http.Request) {
-	req := model.StandardRequestUser{}
+	req := model.StandardRequestUser{
+		RoleID: r.URL.Query().Get("roleId"),
+	}
 	status, err := h.UserService.GetAll(r.Context(), req)
 	if err != nil {
 		response.WithError(w, err)

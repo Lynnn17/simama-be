@@ -54,6 +54,13 @@ func (s *FileServiceImpl) UploadFile(filePath string, w http.ResponseWriter, r *
 
 	path = filepath.Join(filePath, filename)
 	fileLocation := filepath.Join(dir, path)
+
+	// Ensure parent directory exists
+	if err := os.MkdirAll(filepath.Dir(fileLocation), 0755); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return "", err
+	}
+
 	targetFile, err := os.OpenFile(fileLocation, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
