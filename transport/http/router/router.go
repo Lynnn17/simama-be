@@ -23,6 +23,7 @@ type DomainHandlers struct {
 	MentorAssignmentHandler handlers.MentorAssignmentHandler
 	LogbookHandler          handlers.LogbookHandler
 	TaskHandler             handlers.TaskHandler
+	HRDHandler              handlers.HRDHandler
 	// Transaction
 
 	// File
@@ -62,6 +63,7 @@ func (r *Router) SetupRoutes(mux *chi.Mux) {
 		r.DomainHandlers.MentorAssignmentHandler.Router(rc, r.JwtMiddleware)
 		r.DomainHandlers.LogbookHandler.Router(rc, r.JwtMiddleware)
 		r.DomainHandlers.TaskHandler.Router(rc, r.JwtMiddleware)
+		r.DomainHandlers.HRDHandler.Router(rc, r.JwtMiddleware)
 		// Transaction
 
 		// File

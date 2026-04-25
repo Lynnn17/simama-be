@@ -34,6 +34,7 @@ func (h *MentorAssignmentHandler) Router(r chi.Router, middleware *middleware.JW
 			r.Get("/", h.ResolveAll)
 			r.Get("/mentor/{mentorId}/students", h.GetStudentsByMentorID)
 			r.Get("/student/{studentId}", h.ResolveMentorByStudentID)
+			r.Put("/{id}", h.Update)
 		})
 	})
 }
@@ -172,9 +173,35 @@ func (h *MentorAssignmentHandler) ResolveAll(w http.ResponseWriter, r *http.Requ
 		pageNumber = parsed
 	}
 
+	var mentorIDPtr *uuid.UUID
+	if mid := r.URL.Query().Get("mentorId"); mid != "" {
+		if id, err := uuid.FromString(mid); err == nil {
+			mentorIDPtr = &id
+		}
+	}
+
+	var studentIDPtr *uuid.UUID
+	if sid := r.URL.Query().Get("studentId"); sid != "" {
+		if id, err := uuid.FromString(sid); err == nil {
+			studentIDPtr = &id
+		}
+	}
+
+	var isActivePtr *bool
+	if active := r.URL.Query().Get("isActive"); active != "" {
+		b, err := strconv.ParseBool(active)
+		if err == nil {
+			isActivePtr = &b
+		}
+	}
+
 	req := internship.RequestMentorAssignmentListFormat{
 		PageSize:   pageSize,
 		PageNumber: pageNumber,
+		MentorID:   mentorIDPtr,
+		StudentID:  studentIDPtr,
+		IsActive:   isActivePtr,
+		Search:     r.URL.Query().Get("search"),
 	}
 
 	data, err := h.MentorAssignmentService.ResolveAll(r.Context(), req)
@@ -184,4 +211,34 @@ func (h *MentorAssignmentHandler) ResolveAll(w http.ResponseWriter, r *http.Requ
 	}
 
 	response.WithJSON(w, http.StatusOK, data)
+}
+
+func (h *MentorAssignmentHandler) Update(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.FromString(idStr)
+	if err != nil {
+		response.WithError(w, failure.BadRequest(errors.New("invalid assignment id")))
+		return
+	}
+
+	var req internship.RequestMentorAssignmentFormat
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		response.WithError(w, failure.BadRequest(err))
+		return
+	}
+
+	err = shared.GetValidator().Struct(req)
+	if err != nil {
+		response.WithError(w, failure.BadRequest(err))
+		return
+	}
+
+	updated, err := h.MentorAssignmentService.Update(r.Context(), id, req)
+	if err != nil {
+		response.WithError(w, err)
+		return
+	}
+
+	response.WithJSON(w, http.StatusOK, updated)
 }

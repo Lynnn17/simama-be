@@ -56,6 +56,7 @@ type RequestRegistrationFormat struct {
 type RequestRegistrationListFormat struct {
 	PageNumber int    `json:"pageNumber" validate:"gte=1"`
 	PageSize   int    `json:"pageSize" validate:"gte=1"`
+	Search     string `json:"search"`
 	Status     string `json:"status"`
 }
 

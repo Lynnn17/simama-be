@@ -55,6 +55,13 @@ type RequestUpdateLogbookStatusFormat struct {
 	UserID uuid.UUID `json:"-"`
 }
 
+type RequestLogbookListFormat struct {
+	PageSize   int    `json:"pageSize"`
+	PageNumber int    `json:"pageNumber"`
+	Search     string `json:"search"`
+	Status     string `json:"status"`
+}
+
 var ColumnMapLogbook = map[string]interface{}{
 	"id":           "id",
 	"studentId":    "student_id",
@@ -100,5 +107,17 @@ func (l *Logbook) UpdateStatusFormat(reqFormat RequestUpdateLogbookStatusFormat)
 	newLogbook.Notes = reqFormat.Notes
 	newLogbook.ReviewedAt = &now
 	newLogbook.ReviewedBy = &reqFormat.UserID
+	return
+}
+
+func (l *Logbook) UpdateFormat(reqFormat RequestLogbookFormat) (newLogbook Logbook, err error) {
+	newLogbook = *l
+	newLogbook.Activities = reqFormat.Activities
+	newLogbook.Blockers = reqFormat.Blockers
+	newLogbook.PlanTomorrow = reqFormat.PlanTomorrow
+	newLogbook.EvidenceURL = reqFormat.EvidenceURL
+	if !reqFormat.LogDate.IsZero() {
+		newLogbook.LogDate = reqFormat.LogDate
+	}
 	return
 }

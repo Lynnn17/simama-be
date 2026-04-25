@@ -19,6 +19,7 @@ var MentorAssignmentQuery = struct {
 	Insert            string
 	ExistByStudentID  string
 	Count             string
+	Update            string
 }{
 	SelectByMentorID: `SELECT ma.id, ma.mentor_id, mentor.name AS mentor_name, ma.student_id, student.name AS student_name, ma.assigned_by, ma.assigned_at, ma.is_active
 		FROM mentor_assignments ma
@@ -32,6 +33,7 @@ var MentorAssignmentQuery = struct {
 		VALUES (:id, :mentor_id, :student_id, :assigned_by, :assigned_at, :is_active) RETURNING id`,
 	ExistByStudentID: `SELECT id FROM mentor_assignments`,
 	Count:            `SELECT count(id) FROM mentor_assignments`,
+	Update:           `UPDATE mentor_assignments SET mentor_id = :mentor_id, student_id = :student_id, is_active = :is_active WHERE id = :id`,
 }
 
 type MentorAssignmentRepository interface {
@@ -40,6 +42,7 @@ type MentorAssignmentRepository interface {
 	ResolveMentorByStudentID(ctx context.Context, studentID uuid.UUID) (data MentorAssignmentDTO, err error)
 	ExistByStudentID(ctx context.Context, studentID uuid.UUID) (bool, error)
 	ResolveAll(ctx context.Context, req RequestMentorAssignmentListFormat) (data pagination.Response, err error)
+	Update(ctx context.Context, data *MentorAssignment) error
 }
 
 type MentorAssignmentRepositoryPostgreSQL struct {
@@ -120,9 +123,36 @@ func (r *MentorAssignmentRepositoryPostgreSQL) ExistByStudentID(ctx context.Cont
 }
 
 func (r *MentorAssignmentRepositoryPostgreSQL) ResolveAll(ctx context.Context, req RequestMentorAssignmentListFormat) (data pagination.Response, err error) {
+	var searchParams []interface{}
+	var searchBuff bytes.Buffer
+	searchBuff.WriteString(" WHERE 1=1 ")
+
+	if req.MentorID != nil && *req.MentorID != uuid.Nil {
+		searchBuff.WriteString(" AND ma.mentor_id = ? ")
+		searchParams = append(searchParams, req.MentorID)
+	}
+
+	if req.StudentID != nil && *req.StudentID != uuid.Nil {
+		searchBuff.WriteString(" AND ma.student_id = ? ")
+		searchParams = append(searchParams, req.StudentID)
+	}
+
+	if req.IsActive != nil {
+		searchBuff.WriteString(" AND ma.is_active = ? ")
+		searchParams = append(searchParams, req.IsActive)
+	}
+
+	if req.Search != "" {
+		searchBuff.WriteString(" AND (mentor.name ILIKE ? OR student.name ILIKE ?) ")
+		searchParams = append(searchParams, "%"+req.Search+"%", "%"+req.Search+"%")
+	}
+
 	var totalData int
-	countQuery := r.DB.Read.Rebind(MentorAssignmentQuery.Count)
-	err = r.DB.Read.QueryRowContext(ctx, countQuery).Scan(&totalData)
+	countQuery := r.DB.Read.Rebind("SELECT count(*) FROM mentor_assignments ma " +
+		" LEFT JOIN auth_user mentor ON mentor.id = ma.mentor_id " +
+		" LEFT JOIN auth_user student ON student.id = ma.student_id " +
+		searchBuff.String())
+	err = r.DB.Read.QueryRowContext(ctx, countQuery, searchParams...).Scan(&totalData)
 	if err != nil {
 		logger.ErrorWithStack(err)
 		return
@@ -134,13 +164,12 @@ func (r *MentorAssignmentRepositoryPostgreSQL) ResolveAll(ctx context.Context, r
 		return
 	}
 
-	var searchBuff bytes.Buffer
-	searchBuff.WriteString(" ORDER BY assigned_at DESC ")
+	searchBuff.WriteString(" ORDER BY ma.assigned_at DESC ")
 	searchBuff.WriteString(" LIMIT ? OFFSET ? ")
 
 	offset := (req.PageNumber - 1) * req.PageSize
 	query := r.DB.Read.Rebind(MentorAssignmentQuery.SelectByMentorID + searchBuff.String())
-	rows, err := r.DB.Read.QueryxContext(ctx, query, req.PageSize, offset)
+	rows, err := r.DB.Read.QueryxContext(ctx, query, append(searchParams, req.PageSize, offset)...)
 	if err != nil {
 		logger.ErrorWithStack(err)
 		return
@@ -159,6 +188,21 @@ func (r *MentorAssignmentRepositoryPostgreSQL) ResolveAll(ctx context.Context, r
 
 	data.Meta = pagination.CreateMeta(totalData, req.PageSize, req.PageNumber)
 	return
+}
+
+func (r *MentorAssignmentRepositoryPostgreSQL) Update(ctx context.Context, data *MentorAssignment) error {
+	stmt, err := r.DB.Write.PrepareNamedContext(ctx, MentorAssignmentQuery.Update)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, data)
+	if err != nil {
+		logger.ErrorWithStack(err)
+	}
+	return err
 }
 
 func (r *MentorAssignmentRepositoryPostgreSQL) String() string {

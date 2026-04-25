@@ -1,14 +1,17 @@
 package internship
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/jmoiron/sqlx"
 
 	"lms-be/infras"
 	"lms-be/shared/logger"
+	"lms-be/shared/pagination"
 )
 
 var TaskQuery = struct {
@@ -22,6 +25,7 @@ var TaskQuery = struct {
 	ExistByMentorID    string
 	ResolveByID        string
 	SelectFileByTaskID string
+	Count              string
 }{
 	Select: `SELECT id, mentor_id, student_id, title, description, deadline, status, grade, feedback, created_at, updated_at FROM tasks `,
 	SelectDTO: `SELECT t.id, t.mentor_id, mentor.name AS mentor_name, t.student_id, student.name AS student_name, t.title, t.description, t.deadline, t.status, t.grade, t.feedback, t.created_at, t.updated_at, tf.id AS latest_file_id, tf.file_url AS latest_file_url
@@ -44,6 +48,7 @@ var TaskQuery = struct {
 	ExistByMentorID:    `SELECT id FROM tasks`,
 	ResolveByID:        `SELECT id, mentor_id, student_id, title, description, deadline, status, grade, feedback, created_at, updated_at FROM tasks`,
 	SelectFileByTaskID: `SELECT id, task_id, file_url, uploaded_by, created_at FROM task_files `,
+	Count:              `SELECT count(*) FROM tasks `,
 }
 
 type TaskRepository interface {
@@ -51,6 +56,8 @@ type TaskRepository interface {
 	CreateTx(ctx context.Context, tx *sqlx.Tx, data *Task) error
 	GetByStudentID(ctx context.Context, studentID uuid.UUID) (data []TaskDTO, err error)
 	GetByMentorID(ctx context.Context, mentorID uuid.UUID) (data []TaskDTO, err error)
+	ResolveAllByStudentID(ctx context.Context, studentID uuid.UUID, req RequestTaskListFormat) (data pagination.Response, err error)
+	ResolveAllByMentorID(ctx context.Context, mentorID uuid.UUID, req RequestTaskListFormat) (data pagination.Response, err error)
 	ResolveByID(ctx context.Context, id uuid.UUID) (data Task, err error)
 	Update(ctx context.Context, data Task) error
 	UpdateSubmittedTx(ctx context.Context, tx *sqlx.Tx, data Task) error
@@ -254,4 +261,122 @@ func (r *TaskRepositoryPostgreSQL) ExistByMentorID(ctx context.Context, mentorID
 		return false, err
 	}
 	return true, nil
+}
+
+func (r *TaskRepositoryPostgreSQL) ResolveAllByStudentID(ctx context.Context, studentID uuid.UUID, req RequestTaskListFormat) (data pagination.Response, err error) {
+	var totalData int
+	var filterBuff bytes.Buffer
+	filterBuff.WriteString(" WHERE t.student_id = ? ")
+
+	if req.Search != "" {
+		filterBuff.WriteString(fmt.Sprintf(" AND (t.title ILIKE '%%%s%%' OR t.description ILIKE '%%%s%%') ", req.Search, req.Search))
+	}
+
+	if req.Status != "" {
+		filterBuff.WriteString(fmt.Sprintf(" AND t.status = '%s' ", req.Status))
+	}
+
+	if req.Date != "" {
+		filterBuff.WriteString(fmt.Sprintf(" AND DATE(t.deadline) = '%s' ", req.Date))
+	}
+
+	countQuery := r.DB.Read.Rebind(TaskQuery.Count + " t " + filterBuff.String())
+	err = r.DB.Read.QueryRowContext(ctx, countQuery, studentID).Scan(&totalData)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
+
+	if totalData < 1 {
+		data.Items = make([]interface{}, 0)
+		data.Meta = pagination.CreateMeta(totalData, req.PageSize, req.PageNumber)
+		return
+	}
+
+	filterBuff.WriteString(" ORDER BY t.created_at DESC ")
+	filterBuff.WriteString(" LIMIT ? OFFSET ? ")
+
+	offset := (req.PageNumber - 1) * req.PageSize
+	query := r.DB.Read.Rebind(TaskQuery.SelectDTO + filterBuff.String())
+	rows, err := r.DB.Read.QueryxContext(ctx, query, studentID, req.PageSize, offset)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var task TaskDTO
+		err = rows.StructScan(&task)
+		if err != nil {
+			logger.ErrorWithStack(err)
+			return
+		}
+		data.Items = append(data.Items, task)
+	}
+
+	data.Meta = pagination.CreateMeta(totalData, req.PageSize, req.PageNumber)
+	return
+}
+
+func (r *TaskRepositoryPostgreSQL) ResolveAllByMentorID(ctx context.Context, mentorID uuid.UUID, req RequestTaskListFormat) (data pagination.Response, err error) {
+	var totalData int
+	var filterBuff bytes.Buffer
+	filterBuff.WriteString(" WHERE t.mentor_id = ? ")
+
+	if req.Search != "" {
+		filterBuff.WriteString(fmt.Sprintf(" AND (t.title ILIKE '%%%s%%') ", req.Search, req.Search))
+	}
+
+	if req.Status != "" {
+		filterBuff.WriteString(fmt.Sprintf(" AND t.status = '%s' ", req.Status))
+	}
+
+	if req.Date != "" {
+		filterBuff.WriteString(fmt.Sprintf(" AND DATE(t.deadline) = '%s' ", req.Date))
+	}
+
+	joinSQL := ""
+	if req.StudentSearch != "" {
+		joinSQL = " LEFT JOIN auth_user student ON student.id = t.student_id "
+		filterBuff.WriteString(fmt.Sprintf(" AND student.name ILIKE '%%%s%%' ", req.StudentSearch))
+	}
+
+	countQuery := r.DB.Read.Rebind(TaskQuery.Count + " t " + joinSQL + filterBuff.String())
+	err = r.DB.Read.QueryRowContext(ctx, countQuery, mentorID).Scan(&totalData)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
+
+	if totalData < 1 {
+		data.Items = make([]interface{}, 0)
+		data.Meta = pagination.CreateMeta(totalData, req.PageSize, req.PageNumber)
+		return
+	}
+
+	filterBuff.WriteString(" ORDER BY t.created_at DESC ")
+	filterBuff.WriteString(" LIMIT ? OFFSET ? ")
+
+	offset := (req.PageNumber - 1) * req.PageSize
+	query := r.DB.Read.Rebind(TaskQuery.SelectDTO + filterBuff.String())
+	rows, err := r.DB.Read.QueryxContext(ctx, query, mentorID, req.PageSize, offset)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var task TaskDTO
+		err = rows.StructScan(&task)
+		if err != nil {
+			logger.ErrorWithStack(err)
+			return
+		}
+		data.Items = append(data.Items, task)
+	}
+
+	data.Meta = pagination.CreateMeta(totalData, req.PageSize, req.PageNumber)
+	return
 }

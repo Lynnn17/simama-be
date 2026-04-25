@@ -81,6 +81,11 @@ func (r *RegistrationRepositoryPostgreSQL) GetAll(ctx context.Context, req Reque
 		searchParams = append(searchParams, req.Status)
 	}
 
+	if req.Search != "" {
+		searchBuff.WriteString(" AND (full_name ILIKE ? OR university ILIKE ? OR major ILIKE ?) ")
+		searchParams = append(searchParams, "%"+req.Search+"%", "%"+req.Search+"%", "%"+req.Search+"%")
+	}
+
 	searchBuff.WriteString(" ORDER BY applied_at DESC ")
 
 	query := r.DB.Read.Rebind(RegistrationQuery.SelectDTO + searchBuff.String())
@@ -146,6 +151,11 @@ func (r *RegistrationRepositoryPostgreSQL) ResolveAll(ctx context.Context, req R
 	if req.Status != "" {
 		searchBuff.WriteString(" AND status = ? ")
 		searchParams = append(searchParams, req.Status)
+	}
+
+	if req.Search != "" {
+		searchBuff.WriteString(" AND (full_name ILIKE ? OR university ILIKE ? OR major ILIKE ?) ")
+		searchParams = append(searchParams, "%"+req.Search+"%", "%"+req.Search+"%", "%"+req.Search+"%")
 	}
 
 	var totalData int

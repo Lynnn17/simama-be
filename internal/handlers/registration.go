@@ -130,6 +130,7 @@ func (h *RegistrationHandler) ResolveAll(w http.ResponseWriter, r *http.Request)
 	req := internship.RequestRegistrationListFormat{
 		PageSize:   pageSize,
 		PageNumber: pageNumber,
+		Search:     r.URL.Query().Get("search"),
 		Status:     r.URL.Query().Get("status"),
 	}
 
@@ -160,6 +161,7 @@ func (h *RegistrationHandler) ResolveAll(w http.ResponseWriter, r *http.Request)
 // @Router /v1/internship/registration/all [get]
 func (h *RegistrationHandler) GetAllData(w http.ResponseWriter, r *http.Request) {
 	req := internship.RequestRegistrationListFormat{
+		Search: r.URL.Query().Get("search"),
 		Status: r.URL.Query().Get("status"),
 	}
 

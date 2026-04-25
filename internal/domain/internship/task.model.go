@@ -62,9 +62,19 @@ type RequestSubmitTaskFileFormat struct {
 }
 
 type RequestGradeTaskFormat struct {
-	Grade    int       `db:"grade" json:"grade" validate:"required"`
-	Feedback *string   `db:"feedback" json:"feedback"`
+	Grade    *int    `db:"grade" json:"grade" validate:"omitempty,min=0,max=100"`
+	Status   string  `json:"status" validate:"required"`
+	Feedback *string `db:"feedback" json:"feedback"`
 	UserID   uuid.UUID `json:"-"`
+}
+
+type RequestTaskListFormat struct {
+	PageSize      int    `json:"pageSize"`
+	PageNumber    int    `json:"pageNumber"`
+	Search        string `json:"search"`
+	Status        string `json:"status"`
+	Date          string `json:"date"`
+	StudentSearch string `json:"studentSearch"`
 }
 
 var ColumnMapTask = map[string]interface{}{
@@ -100,12 +110,12 @@ func (t *Task) NewTaskFormat(reqFormat RequestTaskFormat) (newTask Task, err err
 	return
 }
 
-func (t *Task) UpdateGradeFormat(reqFormat RequestGradeTaskFormat) (newTask Task, err error) {
+func (t *Task) UpdateGradeFormat(req RequestGradeTaskFormat) (newTask Task, err error) {
 	now := time.Now()
 	newTask = *t
-	newTask.Status = "graded"
-	newTask.Grade = &reqFormat.Grade
-	newTask.Feedback = reqFormat.Feedback
+	newTask.Status = req.Status
+	newTask.Grade = req.Grade
+	newTask.Feedback = req.Feedback
 	newTask.UpdatedAt = &now
 	return
 }
@@ -114,6 +124,18 @@ func (t *Task) MarkSubmitted() (newTask Task, err error) {
 	now := time.Now()
 	newTask = *t
 	newTask.Status = "submitted"
+	newTask.UpdatedAt = &now
+	return
+}
+
+func (t *Task) UpdateFormat(reqFormat RequestTaskFormat) (newTask Task, err error) {
+	now := time.Now()
+	newTask = *t
+	newTask.Title = reqFormat.Title
+	newTask.Description = reqFormat.Description
+	if !reqFormat.Deadline.IsZero() {
+		newTask.Deadline = reqFormat.Deadline
+	}
 	newTask.UpdatedAt = &now
 	return
 }
