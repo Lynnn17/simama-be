@@ -123,6 +123,10 @@ var domainInternship = wire.NewSet(
 	wire.Bind(new(internship.TaskRepository), new(*internship.TaskRepositoryPostgreSQL)),
 	internship.ProvideTaskFileRepositoryPostgreSQL,
 	wire.Bind(new(internship.TaskFileRepository), new(*internship.TaskFileRepositoryPostgreSQL)),
+	internship.ProvideHRDMonitoringServiceImpl,
+	wire.Bind(new(internship.HRDMonitoringService), new(*internship.HRDMonitoringServiceImpl)),
+	internship.ProvideHRDMonitoringRepositoryPostgreSQL,
+	wire.Bind(new(internship.HRDMonitoringRepository), new(*internship.HRDMonitoringRepositoryPostgreSQL)),
 )
 
 var domainTransaction = wire.NewSet()
@@ -146,6 +150,7 @@ var routing = wire.NewSet(
 	handlers.ProvideMentorAssignmentHandler,
 	handlers.ProvideLogbookHandler,
 	handlers.ProvideTaskHandler,
+	handlers.ProvideHRDHandler,
 	// Transaction
 	// File
 	handlers.ProvideFileHandler,

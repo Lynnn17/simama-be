@@ -20,5 +20,6 @@ CREATE TABLE IF NOT EXISTS public.logbooks
     CONSTRAINT logbooks_reviewed_by_fkey FOREIGN KEY (reviewed_by)
         REFERENCES public.auth_user (id) MATCH SIMPLE
         ON UPDATE NO ACTION
-        ON DELETE SET NULL
+        ON DELETE SET NULL,
+    CONSTRAINT logbooks_student_id_log_date_key UNIQUE (student_id, log_date)
 );

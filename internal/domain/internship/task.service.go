@@ -1,6 +1,12 @@
 package internship
 
 import (
+	"bytes"
+	"archive/zip"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"context"
 	"errors"
 	"strings"
@@ -9,14 +15,20 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"lms-be/infras"
+	"lms-be/shared/pagination"
 )
 
 type TaskService interface {
 	Create(ctx context.Context, req RequestTaskFormat) (newTask Task, err error)
 	GetByStudentID(ctx context.Context, studentID uuid.UUID) (data []TaskDTO, err error)
 	GetByMentorID(ctx context.Context, mentorID uuid.UUID) (data []TaskDTO, err error)
+	ResolveAllByStudentID(ctx context.Context, studentID uuid.UUID, req RequestTaskListFormat) (data pagination.Response, err error)
+	ResolveAllByMentorID(ctx context.Context, mentorID uuid.UUID, req RequestTaskListFormat) (data pagination.Response, err error)
 	SubmitTaskFile(ctx context.Context, req RequestSubmitTaskFileFormat) (newTaskFile TaskFile, err error)
 	GradeTask(ctx context.Context, id uuid.UUID, req RequestGradeTaskFormat) (newTask Task, err error)
+	Update(ctx context.Context, id uuid.UUID, req RequestTaskFormat) (newTask Task, err error)
+	GetFilesByTaskID(ctx context.Context, taskID uuid.UUID) (data []TaskFile, err error)
+	CreateZipFromTaskFiles(ctx context.Context, taskID uuid.UUID, baseDir string) (data []byte, filename string, err error)
 }
 
 type TaskServiceImpl struct {
@@ -141,4 +153,100 @@ func (s *TaskServiceImpl) GradeTask(ctx context.Context, id uuid.UUID, req Reque
 		return Task{}, err
 	}
 	return newTask, nil
+}
+
+func (s *TaskServiceImpl) ResolveAllByStudentID(ctx context.Context, studentID uuid.UUID, req RequestTaskListFormat) (data pagination.Response, err error) {
+	if studentID == uuid.Nil {
+		return pagination.Response{}, errors.New("student id is required")
+	}
+	if req.PageSize < 1 {
+		req.PageSize = 10
+	}
+	if req.PageNumber < 1 {
+		req.PageNumber = 1
+	}
+	return s.TaskRepository.ResolveAllByStudentID(ctx, studentID, req)
+}
+
+func (s *TaskServiceImpl) ResolveAllByMentorID(ctx context.Context, mentorID uuid.UUID, req RequestTaskListFormat) (data pagination.Response, err error) {
+	if mentorID == uuid.Nil {
+		return pagination.Response{}, errors.New("mentor id is required")
+	}
+	if req.PageSize < 1 {
+		req.PageSize = 10
+	}
+	if req.PageNumber < 1 {
+		req.PageNumber = 1
+	}
+	return s.TaskRepository.ResolveAllByMentorID(ctx, mentorID, req)
+}
+
+func (s *TaskServiceImpl) Update(ctx context.Context, id uuid.UUID, req RequestTaskFormat) (newTask Task, err error) {
+	if id == uuid.Nil {
+		return Task{}, errors.New("task id is required")
+	}
+	if req.MentorID == uuid.Nil {
+		return Task{}, errors.New("mentor id is required")
+	}
+
+	existing, err := s.TaskRepository.ResolveByID(ctx, id)
+	if err != nil || existing.ID == uuid.Nil {
+		return Task{}, errors.New("task not found")
+	}
+
+	if existing.MentorID != req.MentorID {
+		return Task{}, errors.New("access denied")
+	}
+
+	newTask, _ = existing.UpdateFormat(req)
+	err = s.TaskRepository.Update(ctx, newTask)
+	if err != nil {
+		return Task{}, err
+	}
+	return newTask, nil
+}
+
+func (s *TaskServiceImpl) GetFilesByTaskID(ctx context.Context, taskID uuid.UUID) (data []TaskFile, err error) {
+	if taskID == uuid.Nil {
+		return nil, errors.New("task id is required")
+	}
+	return s.TaskFileRepository.ResolveByTaskID(ctx, taskID)
+}
+
+func (s *TaskServiceImpl) CreateZipFromTaskFiles(ctx context.Context, taskID uuid.UUID, baseDir string) (data []byte, filename string, err error) {
+	files, err := s.TaskFileRepository.ResolveByTaskID(ctx, taskID)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(files) == 0 {
+		return nil, "", errors.New("no files found for this task")
+	}
+
+	buf := new(bytes.Buffer)
+	w := zip.NewWriter(buf)
+
+	for _, file := range files {
+		f, err := os.Open(filepath.Join(baseDir, file.FileURL))
+		if err != nil {
+			continue // skip if file not found
+		}
+
+		zf, err := w.Create(filepath.Base(file.FileURL))
+		if err != nil {
+			f.Close()
+			return nil, "", err
+		}
+		_, err = io.Copy(zf, f)
+		f.Close()
+		if err != nil {
+			return nil, "", err
+		}
+	}
+
+	err = w.Close()
+	if err != nil {
+		return nil, "", err
+	}
+
+	return buf.Bytes(), fmt.Sprintf("task-%s-files.zip", taskID.String()), nil
 }

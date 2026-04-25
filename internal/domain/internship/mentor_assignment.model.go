@@ -34,8 +34,12 @@ type RequestMentorAssignmentFormat struct {
 }
 
 type RequestMentorAssignmentListFormat struct {
-	PageSize   int `json:"pageSize"`
-	PageNumber int `json:"pageNumber"`
+	PageSize   int        `json:"pageSize"`
+	PageNumber int        `json:"pageNumber"`
+	MentorID   *uuid.UUID `json:"mentorId"`
+	StudentID  *uuid.UUID `json:"studentId"`
+	IsActive   *bool      `json:"isActive"`
+	Search     string     `json:"search"`
 }
 
 var ColumnMapMentorAssignment = map[string]interface{}{

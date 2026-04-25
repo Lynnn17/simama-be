@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gofrs/uuid/v5"
+	"lms-be/shared/pagination"
 )
 
 type LogbookService interface {
@@ -13,6 +14,9 @@ type LogbookService interface {
 	GetByStudentID(ctx context.Context, studentID uuid.UUID) (data []LogbookDTO, err error)
 	GetByMentorID(ctx context.Context, mentorID uuid.UUID) (data []LogbookDTO, err error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, req RequestUpdateLogbookStatusFormat) (newLogbook Logbook, err error)
+	Update(ctx context.Context, id uuid.UUID, req RequestLogbookFormat) (newLogbook Logbook, err error)
+	ResolveAllByStudentID(ctx context.Context, studentID uuid.UUID, req RequestLogbookListFormat) (data pagination.Response, err error)
+	ResolveAllByMentorID(ctx context.Context, mentorID uuid.UUID, req RequestLogbookListFormat) (data pagination.Response, err error)
 }
 
 type LogbookServiceImpl struct {
@@ -97,4 +101,59 @@ func (s *LogbookServiceImpl) UpdateStatus(ctx context.Context, id uuid.UUID, req
 		return Logbook{}, err
 	}
 	return newLogbook, nil
+}
+
+func (s *LogbookServiceImpl) Update(ctx context.Context, id uuid.UUID, req RequestLogbookFormat) (newLogbook Logbook, err error) {
+	if id == uuid.Nil {
+		return Logbook{}, errors.New("logbook id is required")
+	}
+	if req.StudentID == uuid.Nil {
+		return Logbook{}, errors.New("student id is required")
+	}
+
+	existing, err := s.LogbookRepository.ResolveByID(ctx, id)
+	if err != nil || existing.ID == uuid.Nil {
+		return Logbook{}, errors.New("logbook not found")
+	}
+
+	if existing.StudentID != req.StudentID {
+		return Logbook{}, errors.New("access denied")
+	}
+
+	if existing.Status != "pending" {
+		return Logbook{}, errors.New("only pending logbook can be updated")
+	}
+
+	newLogbook, _ = existing.UpdateFormat(req)
+	err = s.LogbookRepository.Update(ctx, newLogbook)
+	if err != nil {
+		return Logbook{}, err
+	}
+	return newLogbook, nil
+}
+
+func (s *LogbookServiceImpl) ResolveAllByStudentID(ctx context.Context, studentID uuid.UUID, req RequestLogbookListFormat) (data pagination.Response, err error) {
+	if studentID == uuid.Nil {
+		return pagination.Response{}, errors.New("student id is required")
+	}
+	if req.PageSize < 1 {
+		req.PageSize = 10
+	}
+	if req.PageNumber < 1 {
+		req.PageNumber = 1
+	}
+	return s.LogbookRepository.ResolveAllByStudentID(ctx, studentID, req)
+}
+
+func (s *LogbookServiceImpl) ResolveAllByMentorID(ctx context.Context, mentorID uuid.UUID, req RequestLogbookListFormat) (data pagination.Response, err error) {
+	if mentorID == uuid.Nil {
+		return pagination.Response{}, errors.New("mentor id is required")
+	}
+	if req.PageSize < 1 {
+		req.PageSize = 10
+	}
+	if req.PageNumber < 1 {
+		req.PageNumber = 1
+	}
+	return s.LogbookRepository.ResolveAllByMentorID(ctx, mentorID, req)
 }

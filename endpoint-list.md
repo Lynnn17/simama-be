@@ -154,8 +154,9 @@ Dokumen ini merangkum endpoint HTTP yang terdaftar di project ini berdasarkan ro
 | Method | Path | Handler | Purpose | Auth | Request DTO | Response DTO | Notes |
 |---|---|---|---|---|---|---|---|
 | POST | `/v1/internship/logbook/` | `LogbookHandler.CreateLogbook` | Submit logbook | Protected | `internship.RequestLogbookFormat` | `internship.LogbookDTO` | `VerifyToken` |
-| GET | `/v1/internship/logbook/student/{studentId}` | `LogbookHandler.GetLogbooksByStudent` | Logbook student | Protected | Path param | `[]internship.LogbookDTO` | `VerifyToken` |
-| GET | `/v1/internship/logbook/mentor/{mentorId}` | `LogbookHandler.GetLogbooksByMentor` | Logbook mentor | Protected | Path param | `[]internship.LogbookDTO` | `VerifyToken` |
+| PUT | `/v1/internship/logbook/{id}` | `LogbookHandler.Update` | Update logbook harian | Protected | `internship.RequestLogbookFormat` | `internship.LogbookDTO` | `VerifyToken` |
+| GET | `/v1/internship/logbook/student/{studentId}` | `LogbookHandler.GetByStudentID` | Logbook student (paginated) | Protected | Query params | `pagination.Response` | `VerifyToken` |
+| GET | `/v1/internship/logbook/mentor/{mentorId}` | `LogbookHandler.GetByMentorID` | Logbook mentor (paginated) | Protected | Query params | `pagination.Response` | `VerifyToken` |
 | PUT | `/v1/internship/logbook/status/{id}` | `LogbookHandler.UpdateLogbookStatus` | Review / ubah status logbook | Protected | `internship.RequestUpdateLogbookStatusFormat` | - | `VerifyToken` |
 
 ### Task
@@ -163,9 +164,12 @@ Dokumen ini merangkum endpoint HTTP yang terdaftar di project ini berdasarkan ro
 | Method | Path | Handler | Purpose | Auth | Request DTO | Response DTO | Notes |
 |---|---|---|---|---|---|---|---|
 | POST | `/v1/internship/task/` | `TaskHandler.CreateTask` | Buat task | Protected | `internship.RequestTaskFormat` | `internship.TaskDTO` | `VerifyToken` |
-| GET | `/v1/internship/task/student/{studentId}` | `TaskHandler.GetTasksByStudent` | List task student | Protected | Path param | `[]internship.TaskDTO` | `VerifyToken` |
-| GET | `/v1/internship/task/mentor/{mentorId}` | `TaskHandler.GetTasksByMentor` | List task mentor | Protected | Path param | `[]internship.TaskDTO` | `VerifyToken` |
+| PUT | `/v1/internship/task/{id}` | `TaskHandler.Update` | Update task | Protected | `internship.RequestTaskFormat` | `internship.Task` | `VerifyToken` |
+| GET | `/v1/internship/task/student/{studentId}` | `TaskHandler.GetByStudentID` | List task student (paginated) | Protected | Query params | `pagination.Response` | `VerifyToken` |
+| GET | `/v1/internship/task/mentor/{mentorId}` | `TaskHandler.GetByMentorID` | List task mentor (paginated) | Protected | Query params | `pagination.Response` | `VerifyToken` |
 | POST | `/v1/internship/task/submit` | `TaskHandler.SubmitTask` | Submit file task | Protected | `internship.RequestSubmitTaskFileFormat` | `internship.TaskDTO` | `VerifyToken` |
+| GET | `/v1/internship/task/{id}/files` | `TaskHandler.GetFiles` | Lihat semua file tugas | Protected | Path param | `[]internship.TaskFile` | `VerifyToken` |
+| GET | `/v1/internship/task/{id}/download-all` | `TaskHandler.DownloadAll` | Download semua file (ZIP) | Protected | Path param | Binary (ZIP) | `VerifyToken` |
 | PUT | `/v1/internship/task/grade/{id}` | `TaskHandler.GradeTask` | Beri nilai task | Protected | `internship.RequestGradeTaskFormat` | `internship.TaskDTO` | `VerifyToken` |
 
 ## Endpoint File & Import Template
