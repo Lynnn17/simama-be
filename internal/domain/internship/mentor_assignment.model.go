@@ -31,6 +31,7 @@ type RequestMentorAssignmentFormat struct {
 	MentorID   uuid.UUID `db:"mentor_id" json:"mentorId" validate:"required"`
 	StudentID  uuid.UUID `db:"student_id" json:"studentId" validate:"required"`
 	AssignedBy uuid.UUID `json:"-"`
+	Force      bool      `json:"force"`
 }
 
 type RequestMentorAssignmentListFormat struct {

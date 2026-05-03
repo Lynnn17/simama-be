@@ -5,8 +5,9 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/gofrs/uuid/v5"
 	"lms-be/shared/pagination"
+
+	"github.com/gofrs/uuid/v5"
 )
 
 type LogbookService interface {
@@ -44,7 +45,7 @@ func (s *LogbookServiceImpl) Create(ctx context.Context, req RequestLogbookForma
 	if strings.TrimSpace(req.Activities) == "" {
 		return Logbook{}, errors.New("activities is required")
 	}
-	if req.LogDate.IsZero() {
+	if req.LogDate.Time().IsZero() {
 		return Logbook{}, errors.New("log date is required")
 	}
 

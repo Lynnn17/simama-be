@@ -134,3 +134,31 @@ func ParseBool(s *bool) bool {
 
 	return false
 }
+
+// JSONDate is a custom type for handling YYYY-MM-DD format in JSON
+type JSONDate time.Time
+
+func (j *JSONDate) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), "\"")
+	if s == "null" || s == "" {
+		return nil
+	}
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		// Try fallback to RFC3339
+		t, err = time.Parse(time.RFC3339, s)
+		if err != nil {
+			return err
+		}
+	}
+	*j = JSONDate(t)
+	return nil
+}
+
+func (j JSONDate) MarshalJSON() ([]byte, error) {
+	return []byte("\"" + time.Time(j).Format("2006-01-02") + "\""), nil
+}
+
+func (j JSONDate) Time() time.Time {
+	return time.Time(j)
+}

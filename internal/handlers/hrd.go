@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -25,6 +26,7 @@ func (h *HRDHandler) Router(r chi.Router, middleware *middleware.JWT) {
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.VerifyToken)
 			r.Get("/monitoring", h.GetMonitoringData)
+			r.Get("/student-detail/{studentId}", h.GetStudentQuickView)
 		})
 	})
 }
@@ -42,9 +44,25 @@ func (h *HRDHandler) Router(r chi.Router, middleware *middleware.JWT) {
 func (h *HRDHandler) GetMonitoringData(w http.ResponseWriter, r *http.Request) {
 	req := internship.RequestHRDMonitoringFormat{
 		Search: r.URL.Query().Get("search"),
+		Date:   r.URL.Query().Get("date"),
 	}
 
 	data, err := h.HRDMonitoringService.GetMonitoringData(r.Context(), req)
+	if err != nil {
+		response.WithError(w, err)
+		return
+	}
+
+	response.WithJSON(w, http.StatusOK, data)
+}
+func (h *HRDHandler) GetStudentQuickView(w http.ResponseWriter, r *http.Request) {
+	studentID := chi.URLParam(r, "studentId")
+	if studentID == "" {
+		response.WithError(w, fmt.Errorf("studentId is required"))
+		return
+	}
+
+	data, err := h.HRDMonitoringService.GetStudentQuickView(r.Context(), studentID)
 	if err != nil {
 		response.WithError(w, err)
 		return

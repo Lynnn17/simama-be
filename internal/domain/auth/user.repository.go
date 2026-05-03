@@ -97,8 +97,12 @@ type UserRepository interface {
 	ResolveAll(ctx context.Context, req model.StandardRequestUser) (data pagination.Response, err error)
 	CreateLoginActivity(loginActivity LoginActivity) error
 	ExistByUsername(username string) (exist bool, err error)
+	ExistByEmail(email string) (exist bool, err error)
+	ExistByUsernameOrEmail(identifier string) (exist bool, err error)
 	ResolveUserByUsername(username string) ([]User, error)
 	ResolveUserByUsernameRole(username string) (UserDTO, error)
+	ResolveUserByEmailRole(email string) (UserDTO, error)
+	ResolveUserByUsernameOrEmailRole(identifier string) (UserDTO, error)
 	ResolveUserByID(id uuid.UUID) (User, error)
 	ResolveUserByRole(roleName string, idBidang string) (data []User, err error)
 	ResolveUserByIDDTO(id uuid.UUID) (UserDTO, error)
@@ -162,6 +166,26 @@ func (u *UserRepositoryPostgreSQL) ExistByUsername(username string) (exist bool,
 	return exist, err
 }
 
+// ExistByEmail is function to check that email exist or not
+func (u *UserRepositoryPostgreSQL) ExistByEmail(email string) (exist bool, err error) {
+	err = u.DB.Read.Get(&exist, userQuery.Exist+" WHERE email = $1 AND u.active is true AND u.is_deleted is false ", email)
+	if err != nil {
+		logger.ErrorWithStack(err)
+	}
+
+	return exist, err
+}
+
+// ExistByUsernameOrEmail is function to check that username or email exist or not
+func (u *UserRepositoryPostgreSQL) ExistByUsernameOrEmail(identifier string) (exist bool, err error) {
+	err = u.DB.Read.Get(&exist, userQuery.Exist+" WHERE (username = $1 OR email = $1) AND u.active is true AND u.is_deleted is false ", identifier)
+	if err != nil {
+		logger.ErrorWithStack(err)
+	}
+
+	return exist, err
+}
+
 // ResolveUserByUsername is function resolving user data by username
 func (u *UserRepositoryPostgreSQL) ResolveUserByUsername(username string) (user []User, err error) {
 	err = u.DB.Read.Select(&user, userQuery.Select+" WHERE u.username = $1 AND u.deleted_at is null", username)
@@ -173,10 +197,34 @@ func (u *UserRepositoryPostgreSQL) ResolveUserByUsername(username string) (user 
 	return user, nil
 }
 
-// ResolveUserByUsername is function resolving user data by username and role id
+// ResolveUserByUsernameRole is function resolving user data by username and role id
 func (u *UserRepositoryPostgreSQL) ResolveUserByUsernameRole(username string) (UserDTO, error) {
 	var user UserDTO
 	err := u.DB.Read.Get(&user, userQuery.SelectDTO+" WHERE u.username = $1 and u.active = true and u.is_deleted = false  ", username)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return UserDTO{}, err
+	}
+
+	return user, nil
+}
+
+// ResolveUserByEmailRole is function resolving user data by email and role id
+func (u *UserRepositoryPostgreSQL) ResolveUserByEmailRole(email string) (UserDTO, error) {
+	var user UserDTO
+	err := u.DB.Read.Get(&user, userQuery.SelectDTO+" WHERE u.email = $1 and u.active = true and u.is_deleted = false  ", email)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return UserDTO{}, err
+	}
+
+	return user, nil
+}
+
+// ResolveUserByUsernameOrEmailRole is function resolving user data by username or email and role id
+func (u *UserRepositoryPostgreSQL) ResolveUserByUsernameOrEmailRole(identifier string) (UserDTO, error) {
+	var user UserDTO
+	err := u.DB.Read.Get(&user, userQuery.SelectDTO+" WHERE (u.username = $1 OR u.email = $1) and u.active = true and u.is_deleted = false  ", identifier)
 	if err != nil {
 		logger.ErrorWithStack(err)
 		return UserDTO{}, err

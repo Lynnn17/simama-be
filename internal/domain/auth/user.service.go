@@ -83,9 +83,9 @@ func (u *UserServiceImpl) ValidasiLogin(input InputLogin) (user []User, exist bo
 	go u.createLoginActivity(username, errs)
 	username <- input.Username
 
-	exist, err = u.UserRepository.ExistByUsername(input.Username)
+	exist, err = u.UserRepository.ExistByUsernameOrEmail(input.Username)
 	if !exist {
-		err = errors.New("Username atau password yang Anda masukkan salah. Silakan coba lagi.")
+		err = errors.New("Username/Email atau password yang Anda masukkan salah. Silakan coba lagi.")
 		errs <- err
 		return
 	}
@@ -111,7 +111,7 @@ func (u *UserServiceImpl) Login(input InputLogin, ipAddress string, userAgent st
 	go u.createLoginActivity(username, errs)
 	username <- input.Username
 
-	exist, err = u.UserRepository.ExistByUsername(input.Username)
+	exist, err = u.UserRepository.ExistByUsernameOrEmail(input.Username)
 	if !exist {
 		newID, _ := uuid.NewV4()
 		var logSystem = LogSystem{
@@ -125,7 +125,7 @@ func (u *UserServiceImpl) Login(input InputLogin, ipAddress string, userAgent st
 			Kode:       input.Username,
 		}
 		_ = u.LogSystemRepository.CreateLogSystem(logSystem)
-		err = errors.New("Username atau password yang Anda masukkan salah. Silakan coba lagi.")
+		err = errors.New("Username/Email atau password yang Anda masukkan salah. Silakan coba lagi.")
 		errs <- err
 		return
 	}
@@ -135,7 +135,7 @@ func (u *UserServiceImpl) Login(input InputLogin, ipAddress string, userAgent st
 		return
 	}
 
-	datauser, err := u.UserRepository.ResolveUserByUsernameRole(input.Username)
+	datauser, err := u.UserRepository.ResolveUserByUsernameOrEmailRole(input.Username)
 	if err != nil {
 		errs <- err
 		return
@@ -157,7 +157,7 @@ func (u *UserServiceImpl) Login(input InputLogin, ipAddress string, userAgent st
 			Kode:       datauser.ID.String(),
 		}
 		_ = u.LogSystemRepository.CreateLogSystem(logSystem)
-		err = errors.New("Username atau password yang Anda masukkan salah. Silakan coba lagi.")
+		err = errors.New("Username/Email atau password yang Anda masukkan salah. Silakan coba lagi.")
 		errs <- err
 		return
 	}
@@ -198,6 +198,13 @@ func (u *UserServiceImpl) CreateUser(input InputUser, userId uuid.UUID, ipAddres
 	exist, err := u.UserRepository.ExistByUsername(input.Username)
 	if exist {
 		return exist, errors.New("Username Already Exist")
+	}
+
+	if input.Email != nil {
+		existEmail, _ := u.UserRepository.ExistByEmail(*input.Email)
+		if existEmail {
+			return existEmail, errors.New("Email Already Exist")
+		}
 	}
 
 	if err != nil {

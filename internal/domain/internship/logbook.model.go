@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid/v5"
+	"lms-be/shared/model"
 )
 
 type Logbook struct {
@@ -40,14 +41,15 @@ type LogbookDTO struct {
 }
 
 type RequestLogbookFormat struct {
-	ID           uuid.UUID `db:"id" json:"id"`
-	StudentID    uuid.UUID `json:"-"`
-	LogDate      time.Time `db:"log_date" json:"logDate" validate:"required"`
-	Activities   string    `db:"activities" json:"activities" validate:"required"`
-	Blockers     string    `db:"blockers" json:"blockers" validate:"required"`
-	PlanTomorrow string    `db:"plan_tomorrow" json:"planTomorrow" validate:"required"`
-	EvidenceURL  *string   `db:"evidence_url" json:"evidenceUrl"`
+	ID           uuid.UUID      `db:"id" json:"id"`
+	StudentID    uuid.UUID      `json:"-"`
+	LogDate      model.JSONDate `db:"log_date" json:"logDate" validate:"required"`
+	Activities   string         `db:"activities" json:"activities" validate:"required"`
+	Blockers     string         `db:"blockers" json:"blockers" validate:"required"`
+	PlanTomorrow string         `db:"plan_tomorrow" json:"planTomorrow" validate:"required"`
+	EvidenceURL  string         `db:"evidence_url" json:"evidenceUrl" validate:"required,url"`
 }
+
 
 type RequestUpdateLogbookStatusFormat struct {
 	Status string    `db:"status" json:"status" validate:"required,oneof=approved rejected"`
@@ -89,11 +91,11 @@ func (l *Logbook) NewLogbookFormat(reqFormat RequestLogbookFormat) (newLogbook L
 	newLogbook = Logbook{
 		ID:           logbookID,
 		StudentID:    reqFormat.StudentID,
-		LogDate:      reqFormat.LogDate,
+		LogDate:      reqFormat.LogDate.Time(),
 		Activities:   reqFormat.Activities,
 		Blockers:     reqFormat.Blockers,
 		PlanTomorrow: reqFormat.PlanTomorrow,
-		EvidenceURL:  reqFormat.EvidenceURL,
+		EvidenceURL:  &reqFormat.EvidenceURL,
 		Status:       "pending",
 		SubmittedAt:  &now,
 	}
@@ -115,9 +117,9 @@ func (l *Logbook) UpdateFormat(reqFormat RequestLogbookFormat) (newLogbook Logbo
 	newLogbook.Activities = reqFormat.Activities
 	newLogbook.Blockers = reqFormat.Blockers
 	newLogbook.PlanTomorrow = reqFormat.PlanTomorrow
-	newLogbook.EvidenceURL = reqFormat.EvidenceURL
-	if !reqFormat.LogDate.IsZero() {
-		newLogbook.LogDate = reqFormat.LogDate
+	newLogbook.EvidenceURL = &reqFormat.EvidenceURL
+	if !reqFormat.LogDate.Time().IsZero() {
+		newLogbook.LogDate = reqFormat.LogDate.Time()
 	}
 	return
 }

@@ -5,7 +5,8 @@ import (
 	"errors"
 
 	"github.com/gofrs/uuid/v5"
-
+	auth_uuid "github.com/gofrs/uuid"
+	"lms-be/internal/domain/auth"
 	"lms-be/shared/pagination"
 )
 
@@ -19,11 +20,13 @@ type MentorAssignmentService interface {
 
 type MentorAssignmentServiceImpl struct {
 	MentorAssignmentRepository MentorAssignmentRepository
+	UserRepository             auth.UserRepository
 }
 
-func ProvideMentorAssignmentServiceImpl(repository MentorAssignmentRepository) *MentorAssignmentServiceImpl {
+func ProvideMentorAssignmentServiceImpl(repository MentorAssignmentRepository, userRepository auth.UserRepository) *MentorAssignmentServiceImpl {
 	s := new(MentorAssignmentServiceImpl)
 	s.MentorAssignmentRepository = repository
+	s.UserRepository = userRepository
 	return s
 }
 
@@ -40,7 +43,14 @@ func (s *MentorAssignmentServiceImpl) Create(ctx context.Context, req RequestMen
 		return MentorAssignment{}, err
 	}
 	if exist {
-		return MentorAssignment{}, errors.New("student already has a mentor assignment")
+		if !req.Force {
+			return MentorAssignment{}, errors.New("student already has a mentor assignment")
+		}
+		// If Force is true, deactivate the old assignment
+		err = s.MentorAssignmentRepository.DeactivateByStudentID(ctx, req.StudentID)
+		if err != nil {
+			return MentorAssignment{}, err
+		}
 	}
 
 	newMentorAssignment, _ = newMentorAssignment.NewMentorAssignmentFormat(req)
@@ -48,6 +58,16 @@ func (s *MentorAssignmentServiceImpl) Create(ctx context.Context, req RequestMen
 	if err != nil {
 		return MentorAssignment{}, err
 	}
+
+	// Activate student on first assignment
+	// Convert v5 uuid to base uuid expected by auth package
+	authStudentID, _ := auth_uuid.FromString(req.StudentID.String())
+	student, err := s.UserRepository.ResolveUserByID(authStudentID)
+	if err == nil {
+		student.Active = true
+		_ = s.UserRepository.TransactionUpdateUser(student)
+	}
+
 	return newMentorAssignment, nil
 }
 
