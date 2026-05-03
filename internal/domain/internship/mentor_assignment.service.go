@@ -8,6 +8,7 @@ import (
 	auth_uuid "github.com/gofrs/uuid"
 	"lms-be/internal/domain/auth"
 	"lms-be/shared/pagination"
+	"lms-be/shared/socket"
 )
 
 type MentorAssignmentService interface {
@@ -60,12 +61,20 @@ func (s *MentorAssignmentServiceImpl) Create(ctx context.Context, req RequestMen
 	}
 
 	// Activate student on first assignment
-	// Convert v5 uuid to base uuid expected by auth package
 	authStudentID, _ := auth_uuid.FromString(req.StudentID.String())
 	student, err := s.UserRepository.ResolveUserByID(authStudentID)
 	if err == nil {
 		student.Active = true
 		_ = s.UserRepository.TransactionUpdateUser(student)
+
+		// Send Real-time Notification to Mentor
+		hub := socket.GetInstance()
+		notificationMsg := map[string]interface{}{
+			"title":   "Mahasiswa Baru Ditugaskan",
+			"message": "Mahasiswa " + student.Name + " telah ditugaskan kepada Anda.",
+			"type":    "assignment",
+		}
+		hub.SendToUser(req.MentorID.String(), "new_notification", notificationMsg)
 	}
 
 	return newMentorAssignment, nil

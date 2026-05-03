@@ -16,6 +16,7 @@ import (
 
 	"lms-be/infras"
 	"lms-be/shared/pagination"
+	"lms-be/shared/socket"
 )
 
 type TaskService interface {
@@ -74,6 +75,14 @@ func (s *TaskServiceImpl) Create(ctx context.Context, req RequestTaskFormat) (ne
 	if err != nil {
 		return Task{}, err
 	}
+
+	// Notify Student about new task
+	socket.GetInstance().SendToUser(req.StudentID.String(), "new_notification", map[string]interface{}{
+		"title":   "Tugas Baru",
+		"message": "Anda mendapatkan tugas baru: " + req.Title,
+		"type":    "task",
+	})
+
 	return newTask, nil
 }
 
@@ -125,6 +134,14 @@ func (s *TaskServiceImpl) SubmitTaskFile(ctx context.Context, req RequestSubmitT
 	if err != nil {
 		return TaskFile{}, err
 	}
+
+	// Notify Mentor about submission
+	socket.GetInstance().SendToUser(task.MentorID.String(), "new_notification", map[string]interface{}{
+		"title":   "Tugas Dikumpulkan",
+		"message": "Mahasiswa telah mengumpulkan tugas: " + task.Title,
+		"type":    "task_submission",
+	})
+
 	return newTaskFile, nil
 }
 
@@ -152,6 +169,14 @@ func (s *TaskServiceImpl) GradeTask(ctx context.Context, id uuid.UUID, req Reque
 	if err != nil {
 		return Task{}, err
 	}
+
+	// Notify Student about grade/feedback
+	socket.GetInstance().SendToUser(task.StudentID.String(), "new_notification", map[string]interface{}{
+		"title":   "Tugas Dinilai",
+		"message": "Tugas '" + task.Title + "' Anda telah dinilai.",
+		"type":    "task_graded",
+	})
+
 	return newTask, nil
 }
 

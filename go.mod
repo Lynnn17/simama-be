@@ -43,7 +43,9 @@ require (
 	github.com/dchest/captcha v1.1.0 // indirect
 	github.com/gofrs/uuid/v5 v5.4.0 // indirect
 	github.com/golang/protobuf v1.4.2 // indirect
+	github.com/gomodule/redigo v1.8.4 // indirect
 	github.com/googleapis/gax-go/v2 v2.0.5 // indirect
+	github.com/googollee/go-socket.io v1.7.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect

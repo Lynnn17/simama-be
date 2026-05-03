@@ -14,6 +14,7 @@ import (
 	"lms-be/shared/logger"
 	"lms-be/shared/pagination"
 	"lms-be/shared/random"
+	"lms-be/shared/socket"
 	"time"
 )
 
@@ -66,6 +67,16 @@ func (s *RegistrationServiceImpl) Create(ctx context.Context, req RequestRegistr
 	if err != nil {
 		return Registration{}, err
 	}
+
+	// Send Real-time Notification to HRD (Role HA01)
+	hub := socket.GetInstance()
+	notificationMsg := map[string]interface{}{
+		"title":   "Pendaftar Baru",
+		"message": "Ada lamaran magang baru dari " + req.FullName,
+		"type":    "registration",
+	}
+	hub.BroadcastToRole("HA01", "new_notification", notificationMsg)
+	hub.BroadcastToRole("HA01", "refresh_registrations", nil)
 
 	// Send email notification with Retry Logic
 	go func() {

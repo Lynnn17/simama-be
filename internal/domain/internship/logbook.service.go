@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"lms-be/shared/pagination"
+	"lms-be/shared/socket"
 
 	"github.com/gofrs/uuid/v5"
 )
@@ -54,6 +55,10 @@ func (s *LogbookServiceImpl) Create(ctx context.Context, req RequestLogbookForma
 	if err != nil {
 		return Logbook{}, err
 	}
+
+	// Trigger real-time refresh for HRD Dashboard
+	socket.GetInstance().BroadcastToRole("HA01", "monitoring_update", nil)
+
 	return newLogbook, nil
 }
 
