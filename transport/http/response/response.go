@@ -13,6 +13,7 @@ type Base struct {
 	Data    *interface{} `json:"data,omitempty"`
 	Error   *string      `json:"error,omitempty"`
 	Message *string      `json:"message,omitempty"`
+	Warning *string      `json:"warning,omitempty"`
 }
 
 // NoContent sends a response without any content
@@ -28,6 +29,11 @@ func WithMessage(w http.ResponseWriter, code int, message string) {
 // WithJSON sends a response containing a JSON object
 func WithJSON(w http.ResponseWriter, code int, jsonPayload interface{}) {
 	respond(w, code, Base{Data: &jsonPayload})
+}
+
+// WithJSONAndWarning sends a response containing a JSON object and a warning
+func WithJSONAndWarning(w http.ResponseWriter, code int, jsonPayload interface{}, warning string) {
+	respond(w, code, Base{Data: &jsonPayload, Warning: &warning})
 }
 
 // WithError sends a response with an error message

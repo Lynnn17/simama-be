@@ -43,6 +43,7 @@ type MentorAssignmentRepository interface {
 	ExistByStudentID(ctx context.Context, studentID uuid.UUID) (bool, error)
 	ResolveAll(ctx context.Context, req RequestMentorAssignmentListFormat) (data pagination.Response, err error)
 	Update(ctx context.Context, data *MentorAssignment) error
+	DeactivateByStudentID(ctx context.Context, studentID uuid.UUID) error
 }
 
 type MentorAssignmentRepositoryPostgreSQL struct {
@@ -199,6 +200,15 @@ func (r *MentorAssignmentRepositoryPostgreSQL) Update(ctx context.Context, data 
 	defer stmt.Close()
 
 	_, err = stmt.ExecContext(ctx, data)
+	if err != nil {
+		logger.ErrorWithStack(err)
+	}
+	return err
+}
+
+func (r *MentorAssignmentRepositoryPostgreSQL) DeactivateByStudentID(ctx context.Context, studentID uuid.UUID) error {
+	query := r.DB.Write.Rebind("UPDATE mentor_assignments SET is_active = false WHERE student_id = ? AND is_active = true")
+	_, err := r.DB.Write.ExecContext(ctx, query, studentID)
 	if err != nil {
 		logger.ErrorWithStack(err)
 	}

@@ -28,6 +28,16 @@ func ErrorWithStack(err error) {
 	log.Error().Msgf("%+v", errors.WithStack(err))
 }
 
+// Info logs a message at info level
+func Info(msg string) {
+	log.Info().Msg(msg)
+}
+
+// Error logs a message at error level
+func Error(msg string) {
+	log.Error().Msg(msg)
+}
+
 // SetLogLevel sets the desired log level specified in env var.
 func SetLogLevel(config *configs.Config) {
 	level, err := zerolog.ParseLevel(config.Server.LogLevel)

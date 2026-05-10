@@ -14,6 +14,7 @@ import (
 	"lms-be/docs"
 	"lms-be/infras"
 	"lms-be/shared/logger"
+	"lms-be/shared/socket"
 	"lms-be/transport/http/response"
 	"lms-be/transport/http/router"
 
@@ -22,10 +23,6 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/rs/zerolog/log"
 	httpSwagger "github.com/swaggo/http-swagger"
-
-	gosocketio "github.com/graarh/golang-socketio"
-	"github.com/graarh/golang-socketio/transport"
-	// socketio "github.com/googollee/go-socket.io"
 )
 
 // ServerState is an indicator if this server's state.
@@ -41,11 +38,6 @@ const (
 	// responds to any requests, is cleaning up its internal state, and
 	// will shut down shortly.
 	ServerStateInCleanupPeriod
-)
-
-var (
-	Server *gosocketio.Server
-	// Server *socketio.Server
 )
 
 // HTTP is the HTTP server.
@@ -66,122 +58,14 @@ func ProvideHTTP(db *infras.PostgresqlConn, config *configs.Config, router route
 	}
 }
 
-type CustomServer struct {
-	Server *gosocketio.Server
-	// Server *socketio.Server
-}
-
-func init() {
-	Server = gosocketio.NewServer(transport.GetDefaultWebsocketTransport())
-	fmt.Println("Socket Inititalize...")
-}
-
-type Channel struct {
-	Channel string `json:"channel"`
-}
-type Message struct {
-	Id      string `json:"id"`
-	Channel string `json:"channel"`
-	Stable  string `json:"stable"`
-	Text    string `json:"text"`
-}
-
 func (h *HTTP) LoadSocket() {
-	// socket connection
-	Server.On(gosocketio.OnConnection, func(c *gosocketio.Channel, args interface{}) {
-		fmt.Println("Connected", c.Id())
-		c.Emit("/message", Message{c.Id(), "", "NONST", "0"})
-		c.Join("Room")
-		c.BroadcastTo("Room", "/message", Message{c.Id(), "", "ST", "30"})
-	})
-
-	// socket disconnection
-	Server.On(gosocketio.OnDisconnection, func(c *gosocketio.Channel) {
-		fmt.Println("Disconnected", c.Id())
-		// handles when someone closes the tab
-		c.Leave("Room")
-	})
-	//
-	Server.On("/scan", func(c *gosocketio.Channel, message Message) string {
-		fmt.Println("MSG:", message.Text)
-		c.Emit("/message", Message{c.Id(), "", message.Channel, message.Text})
-		return "message sent successfully."
-	})
-	Server.On("/join", func(c *gosocketio.Channel, channel Channel) string {
-		time.Sleep(2 * time.Second)
-		fmt.Println("Client joined to ", channel.Channel)
-		return "joined to " + channel.Channel
-	})
-
-	// // Riset Gooogle Socket IO
-
-	// // v := url.Values{
-	// // 	"username": []string{"test_username"},
-	// // }
-	// // myUrl := url.URL{
-	// // 	RawQuery: v.Encode(),
-	// // }
-	// // pollTransport := polling.Default
-	// // wsTransport := websocket.Default
-
-	// // pollTransport.Dial(myUrl)
-	// // pollTransport.SetURL(myUrl)
-	// // pt := polling.Default
-
-	// // wt := websocket.Default
-	// // wt.CheckOrigin = func(req *http.Request) bool {
-	// // 	return true
-	// // }
-
-	// Server = socketio.NewServer(nil)
-	// // options := engineio.Options{
-	// // 	Transports: []transport.Transport{
-	// // 		&polling.Transport{
-	// // 			// CheckOrigin: allowOriginFunc ,
-	// // 		},
-	// // 		&websocket.Transport{
-	// // 			// CheckOrigin: allowOriginFunc,
-	// // 		},
-	// // 	},
-	// // }
-
-	// // Server = socketio.NewServer(&options)
-	// // if err != nil {
-	// // 	log.Fatal(err)
-	// // }
-	// Server.OnConnect("/", func(s socketio.Conn) error {
-	// 	s.SetContext("")
-	// 	fmt.Println("connected:", s.ID())
-	// 	return nil
-	// })
-	// Server.OnEvent("/", "notice", func(s socketio.Conn, msg string) {
-	// 	fmt.Println("notice:", msg)
-	// 	s.Emit(s.ID(), "reply", "notice message "+msg)
-	// })
-	// Server.OnEvent("/chat", "msg", func(s socketio.Conn, msg string) string {
-	// 	s.SetContext(msg)
-	// 	s.Emit(s.ID(), "reply", "chat msg "+msg)
-	// 	fmt.Println("connect id", s.ID())
-	// 	return "recv " + msg
-	// })
-	// Server.OnEvent("/", "bye", func(s socketio.Conn) string {
-	// 	last := s.Context().(string)
-	// 	s.Emit("bye", last)
-	// 	s.Close()
-	// 	return last
-	// })
-	// Server.OnError("/", func(s socketio.Conn, e error) {
-	// 	fmt.Println("meet error:", e)
-	// })
-	// Server.OnDisconnect("/", func(s socketio.Conn, msg string) {
-	// 	fmt.Println("closed", msg)
-	// })
-	// go Server.Serve()
-	// defer Server.Close()
+	// SSE doesn't need a separate server - it runs as a regular HTTP handler
+	log.Info().Msg("SSE notification hub initialized")
 }
 
 func (h *HTTP) InititalizeRoutes() {
-	h.mux.Handle("/socket.io/", Server)
+	hub := socket.GetInstance()
+	h.mux.Handle("/events", hub)
 }
 
 // SetupAndServe sets up the server and gets it up and running.
@@ -201,7 +85,9 @@ func (h *HTTP) SetupAndServe() {
 	h.logServerInfo()
 	log.Info().Str("port", h.Config.Server.Port).Msg("Starting up HTTP server.")
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:8071"},
+		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:8071"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: true,
 	})
 	handler := c.Handler(h.mux)

@@ -22,17 +22,17 @@ var RegistrationQuery = struct {
 	UpdateUserID  string
 	ResolveByID   string
 }{
-	Select:    `SELECT id, user_id, full_name, university, major, semester, phone, email, period, cv_file_path, status, applied_at, reviewed_at, reviewed_by FROM internship_registrations `,
-	SelectDTO: `SELECT id, user_id, full_name, university, major, semester, phone, email, period, cv_file_path, status, applied_at, reviewed_at, reviewed_by FROM internship_registrations `,
+	Select:    `SELECT id, user_id, full_name, university, major, semester, phone, email, period, cv_file_path, status, is_email_sent, applied_at, reviewed_at, reviewed_by FROM internship_registrations `,
+	SelectDTO: `SELECT id, user_id, full_name, university, major, semester, phone, email, period, cv_file_path, status, is_email_sent, applied_at, reviewed_at, reviewed_by FROM internship_registrations `,
 	Insert: `INSERT INTO internship_registrations 
-		(id, user_id, full_name, university, major, semester, phone, email, period, cv_file_path, status, applied_at, reviewed_at, reviewed_by)
+		(id, user_id, full_name, university, major, semester, phone, email, period, cv_file_path, status, is_email_sent, applied_at, reviewed_at, reviewed_by)
 		VALUES
-		(:id, :user_id, :full_name, :university, :major, :semester, :phone, :email, :period, :cv_file_path, :status, :applied_at, :reviewed_at, :reviewed_by) RETURNING id`,
+		(:id, :user_id, :full_name, :university, :major, :semester, :phone, :email, :period, :cv_file_path, :status, :is_email_sent, :applied_at, :reviewed_at, :reviewed_by) RETURNING id`,
 	ExistByUserID: `SELECT id FROM internship_registrations`,
 	Count:         `SELECT count(id) FROM internship_registrations `,
-	UpdateStatus:  `UPDATE internship_registrations SET status = :status, reviewed_at = :reviewed_at, reviewed_by = :reviewed_by WHERE id = :id`,
+	UpdateStatus:  `UPDATE internship_registrations SET status = :status, reviewed_at = :reviewed_at, reviewed_by = :reviewed_by, is_email_sent = :is_email_sent WHERE id = :id`,
 	UpdateUserID:  `UPDATE internship_registrations SET user_id = :user_id WHERE id = :id`,
-	ResolveByID:   `SELECT id, user_id, full_name, university, major, semester, phone, email, period, cv_file_path, status, applied_at, reviewed_at, reviewed_by FROM internship_registrations`,
+	ResolveByID:   `SELECT id, user_id, full_name, university, major, semester, phone, email, period, cv_file_path, status, is_email_sent, applied_at, reviewed_at, reviewed_by FROM internship_registrations`,
 }
 
 type RegistrationRepository interface {
@@ -41,8 +41,10 @@ type RegistrationRepository interface {
 	ResolveAll(ctx context.Context, req RequestRegistrationListFormat) (data pagination.Response, err error)
 	ResolveByID(ctx context.Context, id uuid.UUID) (data Registration, err error)
 	ExistByUserID(ctx context.Context, userID uuid.UUID) (bool, error)
+	ExistByEmail(ctx context.Context, email string) (bool, error)
 	UpdateStatus(ctx context.Context, data Registration) error
 	UpdateUserID(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
+	UpdateEmailStatus(ctx context.Context, id uuid.UUID, isSent bool) error
 }
 
 type RegistrationRepositoryPostgreSQL struct {
@@ -135,6 +137,15 @@ func (r *RegistrationRepositoryPostgreSQL) UpdateUserID(ctx context.Context, id 
 	return err
 }
 
+func (r *RegistrationRepositoryPostgreSQL) UpdateEmailStatus(ctx context.Context, id uuid.UUID, isSent bool) error {
+	query := r.DB.Write.Rebind("UPDATE internship_registrations SET is_email_sent = ? WHERE id = ?")
+	_, err := r.DB.Write.ExecContext(ctx, query, isSent, id)
+	if err != nil {
+		logger.ErrorWithStack(err)
+	}
+	return err
+}
+
 func (r *RegistrationRepositoryPostgreSQL) ResolveByID(ctx context.Context, id uuid.UUID) (data Registration, err error) {
 	err = r.DB.Read.GetContext(ctx, &data, r.DB.Read.Rebind(RegistrationQuery.ResolveByID+" WHERE id = ?"), id)
 	if err != nil {
@@ -202,6 +213,20 @@ func (r *RegistrationRepositoryPostgreSQL) ExistByUserID(ctx context.Context, us
 	var idResult uuid.UUID
 	query := r.DB.Read.Rebind(RegistrationQuery.ExistByUserID + " WHERE user_id = ?")
 	err := r.DB.Read.GetContext(ctx, &idResult, query, userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		logger.ErrorWithStack(err)
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *RegistrationRepositoryPostgreSQL) ExistByEmail(ctx context.Context, email string) (bool, error) {
+	var idResult uuid.UUID
+	query := r.DB.Read.Rebind("SELECT id FROM internship_registrations WHERE email = ? AND status != 'rejected'")
+	err := r.DB.Read.GetContext(ctx, &idResult, query, email)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil

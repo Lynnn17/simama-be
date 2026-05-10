@@ -17,8 +17,9 @@ type Registration struct {
 	Email      string     `db:"email" json:"email"`
 	Period     string     `db:"period" json:"period"`
 	CVFilePath string     `db:"cv_file_path" json:"cvFilePath"`
-	Status     string     `db:"status" json:"status"`
-	AppliedAt  *time.Time `db:"applied_at" json:"appliedAt"`
+	Status      string     `db:"status" json:"status"`
+	IsEmailSent bool       `db:"is_email_sent" json:"isEmailSent"`
+	AppliedAt   *time.Time `db:"applied_at" json:"appliedAt"`
 	ReviewedAt *time.Time `db:"reviewed_at" json:"reviewedAt"`
 	ReviewedBy *uuid.UUID `db:"reviewed_by" json:"reviewedBy"`
 }
@@ -34,8 +35,9 @@ type RegistrationDTO struct {
 	Email      string     `db:"email" json:"email"`
 	Period     string     `db:"period" json:"period"`
 	CVFilePath string     `db:"cv_file_path" json:"cvFilePath"`
-	Status     string     `db:"status" json:"status"`
-	AppliedAt  *time.Time `db:"applied_at" json:"appliedAt"`
+	Status      string     `db:"status" json:"status"`
+	IsEmailSent bool       `db:"is_email_sent" json:"isEmailSent"`
+	AppliedAt   *time.Time `db:"applied_at" json:"appliedAt"`
 	ReviewedAt *time.Time `db:"reviewed_at" json:"reviewedAt"`
 	ReviewedBy *uuid.UUID `db:"reviewed_by" json:"reviewedBy"`
 }
@@ -76,10 +78,11 @@ var ColumnMapRegistration = map[string]interface{}{
 	"email":      "email",
 	"period":     "period",
 	"cvFilePath": "cv_file_path",
-	"status":     "status",
-	"appliedAt":  "applied_at",
-	"reviewedAt": "reviewed_at",
-	"reviewedBy": "reviewed_by",
+	"status":      "status",
+	"isEmailSent": "is_email_sent",
+	"appliedAt":   "applied_at",
+	"reviewedAt":  "reviewed_at",
+	"reviewedBy":  "reviewed_by",
 }
 
 func (r *Registration) NewRegistrationFormat(reqFormat RequestRegistrationFormat) (newRegistration Registration, err error) {
@@ -100,10 +103,11 @@ func (r *Registration) NewRegistrationFormat(reqFormat RequestRegistrationFormat
 		Email:      reqFormat.Email,
 		Period:     reqFormat.Period,
 		CVFilePath: reqFormat.CVFilePath,
-		Status:     "pending",
-		AppliedAt:  &now,
-		ReviewedAt: nil,
-		ReviewedBy: nil,
+		Status:      "pending",
+		IsEmailSent: true,
+		AppliedAt:   &now,
+		ReviewedAt:  nil,
+		ReviewedBy:  nil,
 	}
 	return
 }

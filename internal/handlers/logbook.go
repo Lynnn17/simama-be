@@ -31,7 +31,6 @@ func (h *LogbookHandler) Router(r chi.Router, middleware *middleware.JWT) {
 			r.Post("/", h.Create)
 			r.Get("/student/{studentId}", h.GetByStudentID)
 			r.Get("/mentor/{mentorId}", h.GetByMentorID)
-			r.Put("/status/{id}", h.UpdateStatus)
 			r.Put("/{id}", h.Update)
 		})
 	})
@@ -87,7 +86,7 @@ func (h *LogbookHandler) Create(w http.ResponseWriter, r *http.Request) {
 // @Param pageNumber query int false "Page number"
 // @Param pageSize query int false "Page size"
 // @Param search query string false "Search activity/blocker/plan"
-// @Param status query string false "Status filter"
+// @Param progressStatus query string false "Progress status filter (in_progress, done, blocked)"
 // @Success 200 {object} response.Base{data=pagination.Response{items=[]internship.LogbookDTO}}
 // @Failure 400 {object} response.Base
 // @Failure 500 {object} response.Base
@@ -103,13 +102,15 @@ func (h *LogbookHandler) GetByStudentID(w http.ResponseWriter, r *http.Request) 
 	pageNumber, _ := strconv.Atoi(r.URL.Query().Get("pageNumber"))
 	pageSize, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))
 	search := r.URL.Query().Get("search")
-	status := r.URL.Query().Get("status")
+	progressStatus := r.URL.Query().Get("progressStatus")
+	date := r.URL.Query().Get("date")
 
 	req := internship.RequestLogbookListFormat{
-		PageSize:   pageSize,
-		PageNumber: pageNumber,
-		Search:     search,
-		Status:     status,
+		PageSize:       pageSize,
+		PageNumber:     pageNumber,
+		Search:         search,
+		ProgressStatus: progressStatus,
+		Date:           date,
 	}
 
 	data, err := h.LogbookService.ResolveAllByStudentID(r.Context(), studentID, req)
@@ -122,15 +123,16 @@ func (h *LogbookHandler) GetByStudentID(w http.ResponseWriter, r *http.Request) 
 }
 
 // @Summary Get logbooks by mentor ID
-// @Description Endpoint ini digunakan untuk mengambil logbook mahasiswa berdasarkan mentor assignment.
+// @Description Endpoint ini digunakan untuk mengambil logbook mahasiswa bimbingan mentor (read-only).
 // @Tags Logbook
 // @Produce json
 // @Security BearerAuth
 // @Param mentorId path string true "Mentor ID"
 // @Param pageNumber query int false "Page number"
 // @Param pageSize query int false "Page size"
-// @Param search query string false "Search activity/blocker/plan"
-// @Param status query string false "Status filter"
+// @Param search query string false "Search activity/blocker/plan/student name"
+// @Param progressStatus query string false "Progress status filter (in_progress, done, blocked)"
+// @Param date query string false "Date filter (YYYY-MM-DD)"
 // @Success 200 {object} response.Base{data=pagination.Response{items=[]internship.LogbookDTO}}
 // @Failure 400 {object} response.Base
 // @Failure 500 {object} response.Base
@@ -146,13 +148,15 @@ func (h *LogbookHandler) GetByMentorID(w http.ResponseWriter, r *http.Request) {
 	pageNumber, _ := strconv.Atoi(r.URL.Query().Get("pageNumber"))
 	pageSize, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))
 	search := r.URL.Query().Get("search")
-	status := r.URL.Query().Get("status")
+	progressStatus := r.URL.Query().Get("progressStatus")
+	date := r.URL.Query().Get("date")
 
 	req := internship.RequestLogbookListFormat{
-		PageSize:   pageSize,
-		PageNumber: pageNumber,
-		Search:     search,
-		Status:     status,
+		PageSize:       pageSize,
+		PageNumber:     pageNumber,
+		Search:         search,
+		ProgressStatus: progressStatus,
+		Date:           date,
 	}
 
 	data, err := h.LogbookService.ResolveAllByMentorID(r.Context(), mentorID, req)
@@ -162,56 +166,6 @@ func (h *LogbookHandler) GetByMentorID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.WithJSON(w, http.StatusOK, data)
-}
-
-// @Summary Update logbook status
-// @Description Endpoint ini digunakan untuk approve/reject logbook oleh mentor.
-// @Tags Logbook
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path string true "Logbook ID"
-// @Param request body internship.RequestUpdateLogbookStatusFormat true "Status logbook"
-// @Success 200 {object} response.Base{data=internship.Logbook}
-// @Failure 400 {object} response.Base
-// @Failure 401 {object} response.Base
-// @Failure 500 {object} response.Base
-// @Router /v1/internship/logbook/status/{id} [put]
-func (h *LogbookHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, err := uuid.FromString(idStr)
-	if err != nil {
-		response.WithError(w, failure.BadRequest(errors.New("invalid logbook id")))
-		return
-	}
-
-	var req internship.RequestUpdateLogbookStatusFormat
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		response.WithError(w, failure.BadRequest(err))
-		return
-	}
-
-	mentorID, err := uuid.FromString(middleware.GetClaimsValue(r.Context(), "userId").(string))
-	if err != nil {
-		response.WithError(w, failure.BadRequest(err))
-		return
-	}
-	req.UserID = mentorID
-
-	err = shared.GetValidator().Struct(req)
-	if err != nil {
-		response.WithError(w, failure.BadRequest(err))
-		return
-	}
-
-	newLogbook, err := h.LogbookService.UpdateStatus(r.Context(), id, req)
-	if err != nil {
-		response.WithError(w, err)
-		return
-	}
-
-	response.WithJSON(w, http.StatusOK, newLogbook)
 }
 
 // @Summary Update logbook
