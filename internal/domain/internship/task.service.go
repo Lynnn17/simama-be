@@ -171,11 +171,19 @@ func (s *TaskServiceImpl) GradeTask(ctx context.Context, id uuid.UUID, req Reque
 	}
 
 	// Notify Student about grade/feedback
-	socket.GetInstance().SendToUser(task.StudentID.String(), "new_notification", map[string]interface{}{
-		"title":   "Tugas Dinilai",
-		"message": "Tugas '" + task.Title + "' Anda telah dinilai.",
-		"type":    "task_graded",
-	})
+	if newTask.Status == "graded" {
+		socket.GetInstance().SendToUser(task.StudentID.String(), "new_notification", map[string]interface{}{
+			"title":   "Tugas Dinilai",
+			"message": "Tugas '" + task.Title + "' Anda telah dinilai. Nilai: " + fmt.Sprintf("%d", *newTask.Grade) + ". Lihat feedback.",
+			"type":    "task_graded",
+		})
+	} else if newTask.Status == "revision_needed" {
+		socket.GetInstance().SendToUser(task.StudentID.String(), "new_notification", map[string]interface{}{
+			"title":   "Tugas Perlu Direvisi",
+			"message": "Tugas '" + task.Title + "' Anda perlu direvisi. Baca catatan dari Mentor.",
+			"type":    "task_revision",
+		})
+	}
 
 	return newTask, nil
 }

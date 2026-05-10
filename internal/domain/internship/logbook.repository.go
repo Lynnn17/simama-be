@@ -18,27 +18,25 @@ var LogbookQuery = struct {
 	SelectStudentDTO string
 	SelectMentorDTO  string
 	Insert           string
-	UpdateStatus     string
 	Update           string
 	Count            string
 }{
-	Select: `SELECT id, student_id, log_date, activities, blockers, plan_tomorrow, evidence_url, status, notes, submitted_at, reviewed_at, reviewed_by FROM logbooks `,
-	SelectStudentDTO: `SELECT l.id, l.student_id, s.name AS student_name, ma.mentor_id, mentor.name AS mentor_name, l.log_date, l.activities, l.blockers, l.plan_tomorrow, l.evidence_url, l.status, l.notes, l.submitted_at, l.reviewed_at, l.reviewed_by
+	Select: `SELECT id, student_id, log_date, activities, blockers, plan_tomorrow, evidence_url, progress_status, submitted_at FROM logbooks `,
+	SelectStudentDTO: `SELECT l.id, l.student_id, s.name AS student_name, ma.mentor_id, mentor.name AS mentor_name, l.log_date, l.activities, l.blockers, l.plan_tomorrow, l.evidence_url, l.progress_status, l.submitted_at
 		FROM logbooks l
 		LEFT JOIN auth_user s ON s.id = l.student_id
 		LEFT JOIN mentor_assignments ma ON ma.student_id = l.student_id AND ma.is_active = true
 		LEFT JOIN auth_user mentor ON mentor.id = ma.mentor_id`,
-	SelectMentorDTO: `SELECT l.id, l.student_id, s.name AS student_name, ma.mentor_id, mentor.name AS mentor_name, l.log_date, l.activities, l.blockers, l.plan_tomorrow, l.evidence_url, l.status, l.notes, l.submitted_at, l.reviewed_at, l.reviewed_by
+	SelectMentorDTO: `SELECT l.id, l.student_id, s.name AS student_name, ma.mentor_id, mentor.name AS mentor_name, l.log_date, l.activities, l.blockers, l.plan_tomorrow, l.evidence_url, l.progress_status, l.submitted_at
 		FROM logbooks l
 		INNER JOIN mentor_assignments ma ON ma.student_id = l.student_id AND ma.is_active = true
 		LEFT JOIN auth_user s ON s.id = l.student_id
 		LEFT JOIN auth_user mentor ON mentor.id = ma.mentor_id`,
 	Insert: `INSERT INTO logbooks
-		(id, student_id, log_date, activities, blockers, plan_tomorrow, evidence_url, status, submitted_at)
+		(id, student_id, log_date, activities, blockers, plan_tomorrow, evidence_url, progress_status, submitted_at)
 		VALUES
-		(:id, :student_id, :log_date, :activities, :blockers, :plan_tomorrow, :evidence_url, :status, :submitted_at) RETURNING id`,
-	UpdateStatus: `UPDATE logbooks SET status = :status, notes = :notes, reviewed_at = :reviewed_at, reviewed_by = :reviewed_by WHERE id = :id`,
-	Update: `UPDATE logbooks SET log_date = :log_date, activities = :activities, blockers = :blockers, plan_tomorrow = :plan_tomorrow, evidence_url = :evidence_url WHERE id = :id`,
+		(:id, :student_id, :log_date, :activities, :blockers, :plan_tomorrow, :evidence_url, :progress_status, :submitted_at) RETURNING id`,
+	Update: `UPDATE logbooks SET log_date = :log_date, activities = :activities, blockers = :blockers, plan_tomorrow = :plan_tomorrow, evidence_url = :evidence_url, progress_status = :progress_status WHERE id = :id`,
 	Count:  `SELECT count(*) FROM logbooks `,
 }
 
@@ -47,7 +45,6 @@ type LogbookRepository interface {
 	GetByStudentID(ctx context.Context, studentID uuid.UUID) (data []LogbookDTO, err error)
 	GetByMentorID(ctx context.Context, mentorID uuid.UUID) (data []LogbookDTO, err error)
 	ResolveByID(ctx context.Context, id uuid.UUID) (data Logbook, err error)
-	UpdateStatus(ctx context.Context, data Logbook) error
 	Update(ctx context.Context, data Logbook) error
 	ResolveAllByStudentID(ctx context.Context, studentID uuid.UUID, req RequestLogbookListFormat) (data pagination.Response, err error)
 	ResolveAllByMentorID(ctx context.Context, mentorID uuid.UUID, req RequestLogbookListFormat) (data pagination.Response, err error)
@@ -135,21 +132,6 @@ func (r *LogbookRepositoryPostgreSQL) ResolveByID(ctx context.Context, id uuid.U
 	return
 }
 
-func (r *LogbookRepositoryPostgreSQL) UpdateStatus(ctx context.Context, data Logbook) error {
-	stmt, err := r.DB.Write.PrepareNamedContext(ctx, LogbookQuery.UpdateStatus)
-	if err != nil {
-		logger.ErrorWithStack(err)
-		return err
-	}
-	defer stmt.Close()
-
-	_, err = stmt.ExecContext(ctx, data)
-	if err != nil {
-		logger.ErrorWithStack(err)
-	}
-	return err
-}
-
 func (r *LogbookRepositoryPostgreSQL) Update(ctx context.Context, data Logbook) error {
 	stmt, err := r.DB.Write.PrepareNamedContext(ctx, LogbookQuery.Update)
 	if err != nil {
@@ -174,8 +156,12 @@ func (r *LogbookRepositoryPostgreSQL) ResolveAllByStudentID(ctx context.Context,
 		searchBuff.WriteString(fmt.Sprintf(" AND (l.activities ILIKE '%%%s%%' OR l.blockers ILIKE '%%%s%%' OR l.plan_tomorrow ILIKE '%%%s%%') ", req.Search, req.Search, req.Search))
 	}
 
-	if req.Status != "" {
-		searchBuff.WriteString(fmt.Sprintf(" AND l.status = '%s' ", req.Status))
+	if req.ProgressStatus != "" {
+		searchBuff.WriteString(fmt.Sprintf(" AND l.progress_status = '%s' ", req.ProgressStatus))
+	}
+
+	if req.Date != "" {
+		searchBuff.WriteString(fmt.Sprintf(" AND l.log_date = '%s' ", req.Date))
 	}
 
 	countQuery := r.DB.Read.Rebind(LogbookQuery.Count + " l " + searchBuff.String())
@@ -223,11 +209,15 @@ func (r *LogbookRepositoryPostgreSQL) ResolveAllByMentorID(ctx context.Context, 
 	filterBuff.WriteString(" WHERE ma.mentor_id = ? ")
 
 	if req.Search != "" {
-		filterBuff.WriteString(fmt.Sprintf(" AND (l.activities ILIKE '%%%s%%' OR l.blockers ILIKE '%%%s%%' OR l.plan_tomorrow ILIKE '%%%s%%') ", req.Search, req.Search, req.Search))
+		filterBuff.WriteString(fmt.Sprintf(" AND (l.activities ILIKE '%%%s%%' OR l.blockers ILIKE '%%%s%%' OR l.plan_tomorrow ILIKE '%%%s%%' OR s.name ILIKE '%%%s%%') ", req.Search, req.Search, req.Search, req.Search))
 	}
 
-	if req.Status != "" {
-		filterBuff.WriteString(fmt.Sprintf(" AND l.status = '%s' ", req.Status))
+	if req.ProgressStatus != "" {
+		filterBuff.WriteString(fmt.Sprintf(" AND l.progress_status = '%s' ", req.ProgressStatus))
+	}
+
+	if req.Date != "" {
+		filterBuff.WriteString(fmt.Sprintf(" AND l.log_date = '%s' ", req.Date))
 	}
 
 	joinSQL := " INNER JOIN mentor_assignments ma ON ma.student_id = l.student_id AND ma.is_active = true "

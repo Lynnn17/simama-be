@@ -33,9 +33,9 @@ func (r *HRDMonitoringRepositoryPostgreSQL) GetMonitoringData(ctx context.Contex
 			u.name AS student_name, 
 			COALESCE(reg.university, '-') AS university, 
 			mentor.name AS mentor_name,
-			lb.status AS logbook_status,
+			lb.progress_status AS logbook_status,
 			lb.submitted_at AS log_date,
-			lb_y.status AS yesterday_logbook_status,
+			lb_y.progress_status AS yesterday_logbook_status,
 			lb_y.submitted_at AS yesterday_log_date
 		FROM auth_user u
 		LEFT JOIN internship_registrations reg ON reg.user_id = u.id
