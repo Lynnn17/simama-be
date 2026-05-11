@@ -3,6 +3,7 @@ package internship
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"lms-be/shared/pagination"
@@ -65,11 +66,19 @@ func (s *LogbookServiceImpl) Create(ctx context.Context, req RequestLogbookForma
 		return Logbook{}, err
 	}
 
+	// Get student name for SSE payload
+	studentName, err := s.LogbookRepository.GetStudentName(ctx, req.StudentID)
+	if err != nil {
+		studentName = "Mahasiswa" // Fallback
+	}
+
+	message := fmt.Sprintf("%s telah mengumpulkan tugas", studentName)
+
 	// Trigger real-time refresh for HRD Dashboard
-	socket.GetInstance().BroadcastToRole("HA01", "monitoring_update", nil)
+	socket.GetInstance().BroadcastToRole("HA01", "monitoring_update", message)
 
 	// Trigger real-time refresh for Mentor Dashboard
-	socket.GetInstance().BroadcastToRole("HA04", "refresh_logbooks", nil)
+	socket.GetInstance().BroadcastToRole("HA04", "refresh_logbooks", message)
 
 	return newLogbook, nil
 }

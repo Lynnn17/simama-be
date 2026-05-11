@@ -48,6 +48,7 @@ type LogbookRepository interface {
 	Update(ctx context.Context, data Logbook) error
 	ResolveAllByStudentID(ctx context.Context, studentID uuid.UUID, req RequestLogbookListFormat) (data pagination.Response, err error)
 	ResolveAllByMentorID(ctx context.Context, mentorID uuid.UUID, req RequestLogbookListFormat) (data pagination.Response, err error)
+	GetStudentName(ctx context.Context, studentID uuid.UUID) (string, error)
 }
 
 type LogbookRepositoryPostgreSQL struct {
@@ -74,6 +75,15 @@ func (r *LogbookRepositoryPostgreSQL) Create(ctx context.Context, data *Logbook)
 		return err
 	}
 	return nil
+}
+
+func (r *LogbookRepositoryPostgreSQL) GetStudentName(ctx context.Context, studentID uuid.UUID) (string, error) {
+	var name string
+	err := r.DB.Read.GetContext(ctx, &name, "SELECT name FROM auth_user WHERE id = $1", studentID)
+	if err != nil {
+		logger.ErrorWithStack(err)
+	}
+	return name, err
 }
 
 func (r *LogbookRepositoryPostgreSQL) GetByStudentID(ctx context.Context, studentID uuid.UUID) (data []LogbookDTO, err error) {
