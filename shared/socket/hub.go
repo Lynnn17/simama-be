@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 )
 
 // SSEClient represents a connected SSE client
@@ -118,6 +119,7 @@ func (h *SocketHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 
@@ -147,11 +149,19 @@ func (h *SocketHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Listen for client disconnect
 	ctx := r.Context()
 
+	// Add ticker for heartbeat (keepalive)
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			h.unregister <- client
 			return
+		case <-ticker.C:
+			// Send comment to keep connection alive
+			fmt.Fprintf(w, ": keepalive\n\n")
+			flusher.Flush()
 		case msg, ok := <-client.Chan:
 			if !ok {
 				return

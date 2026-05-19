@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"lms-be/shared/pagination"
 	"lms-be/shared/socket"
@@ -154,5 +155,58 @@ func (s *LogbookServiceImpl) ResolveAllByMentorID(ctx context.Context, mentorID 
 	if req.PageNumber < 1 {
 		req.PageNumber = 1
 	}
-	return s.LogbookRepository.ResolveAllByMentorID(ctx, mentorID, req)
+
+	if req.Date != "" {
+		parsedDate, err := time.Parse("2006-01-02", req.Date)
+		if err != nil {
+			return pagination.Response{}, errors.New("invalid date format")
+		}
+
+		now := time.Now()
+		todayStr := now.Format("2006-01-02")
+
+		// If requested date is in the future
+		if req.Date > todayStr {
+			return pagination.Response{
+				Items: make([]interface{}, 0),
+				Meta:  pagination.CreateMeta(0, req.PageSize, req.PageNumber),
+			}, nil
+		}
+
+		// If requested date is Saturday or Sunday
+		if parsedDate.Weekday() == time.Saturday || parsedDate.Weekday() == time.Sunday {
+			return pagination.Response{
+				Items: make([]interface{}, 0),
+				Meta:  pagination.CreateMeta(0, req.PageSize, req.PageNumber),
+			}, nil
+		}
+	}
+
+	data, err = s.LogbookRepository.ResolveAllByMentorID(ctx, mentorID, req)
+	if err != nil {
+		return data, err
+	}
+
+	// Post-process to handle "late" status
+	if req.Date != "" {
+		now := time.Now()
+		isToday := req.Date == now.Format("2006-01-02")
+		isPast := req.Date < now.Format("2006-01-02")
+		isPast5PM := now.Hour() >= 17
+
+		for i, item := range data.Items {
+			logbook, ok := item.(LogbookDTO)
+			if !ok {
+				continue
+			}
+			if logbook.ProgressStatus == "pending" {
+				if isPast || (isToday && isPast5PM) {
+					logbook.ProgressStatus = "late"
+					data.Items[i] = logbook
+				}
+			}
+		}
+	}
+
+	return data, nil
 }

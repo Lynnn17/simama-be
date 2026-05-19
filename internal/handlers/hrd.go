@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi"
 
 	"lms-be/internal/domain/internship"
+	"lms-be/shared/failure"
 	"lms-be/transport/http/middleware"
 	"lms-be/transport/http/response"
 )
@@ -42,6 +43,12 @@ func (h *HRDHandler) Router(r chi.Router, middleware *middleware.JWT) {
 // @Failure 500 {object} response.Base
 // @Router /v1/hrd/monitoring [get]
 func (h *HRDHandler) GetMonitoringData(w http.ResponseWriter, r *http.Request) {
+	roleID, ok := middleware.GetClaimsValue(r.Context(), "roleId").(string)
+	if !ok || roleID != "HA03" {
+		response.WithError(w, failure.Forbidden("Hanya HRD yang dapat mengakses endpoint ini."))
+		return
+	}
+
 	req := internship.RequestHRDMonitoringFormat{
 		Search: r.URL.Query().Get("search"),
 		Date:   r.URL.Query().Get("date"),

@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.tasks
     status character varying(20) COLLATE pg_catalog."default" NOT NULL DEFAULT 'assigned',
     grade integer,
     feedback text,
+    submission_url,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone,
     CONSTRAINT tasks_pkey PRIMARY KEY (id),

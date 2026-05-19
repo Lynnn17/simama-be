@@ -103,7 +103,7 @@ func (r *HRDMonitoringRepositoryPostgreSQL) GetStudentQuickView(ctx context.Cont
 
 	// Fetch last logbook
 	lastLbQuery := `
-		SELECT activities, status, submitted_at
+		SELECT activities, progress_status AS status, submitted_at
 		FROM logbooks
 		WHERE student_id = $1
 		ORDER BY log_date DESC

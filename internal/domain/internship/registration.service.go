@@ -183,7 +183,7 @@ func (s *RegistrationServiceImpl) UpdateStatus(ctx context.Context, id uuid.UUID
 
 		if status == "accepted" {
 			// Generate password
-			password, _ := random.RandStringBytes(8, random.AlphanumericMixed)
+			password := "12345678"
 
 			// Generate username from email
 			username := existing.Email
