@@ -7,17 +7,18 @@ import (
 )
 
 type Task struct {
-	ID          uuid.UUID  `db:"id" json:"id"`
-	MentorID    uuid.UUID  `db:"mentor_id" json:"mentorId"`
-	StudentID   uuid.UUID  `db:"student_id" json:"studentId"`
-	Title       string     `db:"title" json:"title"`
-	Description string     `db:"description" json:"description"`
-	Deadline    time.Time  `db:"deadline" json:"deadline"`
-	Status      string     `db:"status" json:"status"`
-	Grade       *int       `db:"grade" json:"grade"`
-	Feedback    *string    `db:"feedback" json:"feedback"`
-	CreatedAt   *time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt   *time.Time `db:"updated_at" json:"updatedAt"`
+	ID            uuid.UUID  `db:"id" json:"id"`
+	MentorID      uuid.UUID  `db:"mentor_id" json:"mentorId"`
+	StudentID     uuid.UUID  `db:"student_id" json:"studentId"`
+	Title         string     `db:"title" json:"title"`
+	Description   string     `db:"description" json:"description"`
+	Deadline      time.Time  `db:"deadline" json:"deadline"`
+	Status        string     `db:"status" json:"status"`
+	Grade         *int       `db:"grade" json:"grade"`
+	Feedback      *string    `db:"feedback" json:"feedback"`
+	SubmissionURL *string    `db:"submission_url" json:"submissionUrl"`
+	CreatedAt     *time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt     *time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 type TaskDTO struct {
@@ -32,6 +33,7 @@ type TaskDTO struct {
 	Status        string     `db:"status" json:"status"`
 	Grade         *int       `db:"grade" json:"grade"`
 	Feedback      *string    `db:"feedback" json:"feedback"`
+	SubmissionURL *string    `db:"submission_url" json:"submissionUrl"`
 	CreatedAt     *time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt     *time.Time `db:"updated_at" json:"updatedAt"`
 	LatestFileID  *uuid.UUID `db:"latest_file_id" json:"latestFileId"`
@@ -56,15 +58,16 @@ type RequestTaskFormat struct {
 }
 
 type RequestSubmitTaskFileFormat struct {
-	TaskID     uuid.UUID `db:"task_id" json:"taskId" validate:"required"`
-	FileURL    string    `db:"file_url" json:"fileUrl" validate:"required"`
-	UploadedBy uuid.UUID `json:"-"`
+	TaskID        uuid.UUID `db:"task_id" json:"taskId" validate:"required"`
+	FileURL       string    `db:"file_url" json:"fileUrl" validate:"required"`
+	SubmissionURL string    `db:"submission_url" json:"submissionUrl" validate:"required"`
+	UploadedBy    uuid.UUID `json:"-"`
 }
 
 type RequestGradeTaskFormat struct {
-	Grade    *int    `db:"grade" json:"grade" validate:"omitempty,min=0,max=100"`
-	Status   string  `json:"status" validate:"required"`
-	Feedback *string `db:"feedback" json:"feedback"`
+	Grade    *int      `db:"grade" json:"grade" validate:"omitempty,min=0,max=100"`
+	Status   string    `json:"status" validate:"required"`
+	Feedback *string   `db:"feedback" json:"feedback"`
 	UserID   uuid.UUID `json:"-"`
 }
 

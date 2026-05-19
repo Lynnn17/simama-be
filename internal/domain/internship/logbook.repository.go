@@ -216,6 +216,91 @@ func (r *LogbookRepositoryPostgreSQL) ResolveAllByStudentID(ctx context.Context,
 func (r *LogbookRepositoryPostgreSQL) ResolveAllByMentorID(ctx context.Context, mentorID uuid.UUID, req RequestLogbookListFormat) (data pagination.Response, err error) {
 	var totalData int
 	var filterBuff bytes.Buffer
+
+	if req.Date != "" {
+		// Query for specific date (Monitoring style)
+		queryBase := `
+			FROM mentor_assignments ma
+			INNER JOIN auth_user s ON s.id = ma.student_id
+			LEFT JOIN logbooks l ON l.student_id = ma.student_id AND l.log_date::date = ?
+			WHERE ma.mentor_id = ? AND ma.is_active = true
+		`
+
+		var filterSQL string
+		if req.Search != "" {
+			filterSQL += fmt.Sprintf(" AND (s.name ILIKE '%%%s%%' OR l.activities ILIKE '%%%s%%' OR l.blockers ILIKE '%%%s%%' OR l.plan_tomorrow ILIKE '%%%s%%') ", req.Search, req.Search, req.Search, req.Search)
+		}
+
+		if req.ProgressStatus != "" {
+			if req.ProgressStatus == "pending" {
+				filterSQL += " AND l.progress_status IS NULL "
+			} else {
+				filterSQL += fmt.Sprintf(" AND l.progress_status = '%s' ", req.ProgressStatus)
+			}
+		}
+
+		countQuery := r.DB.Read.Rebind("SELECT count(*) " + queryBase + filterSQL)
+		err = r.DB.Read.QueryRowContext(ctx, countQuery, req.Date, mentorID).Scan(&totalData)
+		if err != nil {
+			logger.ErrorWithStack(err)
+			return
+		}
+
+		if totalData < 1 {
+			data.Items = make([]interface{}, 0)
+			data.Meta = pagination.CreateMeta(totalData, req.PageSize, req.PageNumber)
+			return
+		}
+
+		offset := (req.PageNumber - 1) * req.PageSize
+
+		selectSQL := `
+			SELECT 
+				COALESCE(l.id, '00000000-0000-0000-0000-000000000000') AS id,
+				ma.student_id,
+				s.name AS student_name,
+				ma.mentor_id,
+				COALESCE(mentor.name, '') AS mentor_name,
+				COALESCE(l.log_date, TO_DATE(?, 'YYYY-MM-DD')) AS log_date,
+				COALESCE(l.activities, '') AS activities,
+				COALESCE(l.blockers, '') AS blockers,
+				COALESCE(l.plan_tomorrow, '') AS plan_tomorrow,
+				l.evidence_url,
+				COALESCE(l.progress_status, 'pending') AS progress_status,
+				l.submitted_at
+			FROM mentor_assignments ma
+			INNER JOIN auth_user s ON s.id = ma.student_id
+			LEFT JOIN auth_user mentor ON mentor.id = ma.mentor_id
+			LEFT JOIN logbooks l ON l.student_id = ma.student_id AND l.log_date::date = ?
+			WHERE ma.mentor_id = ? AND ma.is_active = true
+		`
+
+		selectSQL += filterSQL
+		selectSQL += " ORDER BY s.name ASC LIMIT ? OFFSET ? "
+
+		finalQuery := r.DB.Read.Rebind(selectSQL)
+		rows, err := r.DB.Read.QueryxContext(ctx, finalQuery, req.Date, req.Date, mentorID, req.PageSize, offset)
+		if err != nil {
+			logger.ErrorWithStack(err)
+			return data, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var logbook LogbookDTO
+			err = rows.StructScan(&logbook)
+			if err != nil {
+				logger.ErrorWithStack(err)
+				return data, err
+			}
+			data.Items = append(data.Items, logbook)
+		}
+
+		data.Meta = pagination.CreateMeta(totalData, req.PageSize, req.PageNumber)
+		return data, nil
+	}
+
+	// Existing behavior (when no date is provided)
 	filterBuff.WriteString(" WHERE ma.mentor_id = ? ")
 
 	if req.Search != "" {
@@ -224,10 +309,6 @@ func (r *LogbookRepositoryPostgreSQL) ResolveAllByMentorID(ctx context.Context, 
 
 	if req.ProgressStatus != "" {
 		filterBuff.WriteString(fmt.Sprintf(" AND l.progress_status = '%s' ", req.ProgressStatus))
-	}
-
-	if req.Date != "" {
-		filterBuff.WriteString(fmt.Sprintf(" AND l.log_date = '%s' ", req.Date))
 	}
 
 	joinSQL := " INNER JOIN mentor_assignments ma ON ma.student_id = l.student_id AND ma.is_active = true "

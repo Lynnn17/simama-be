@@ -27,8 +27,8 @@ var TaskQuery = struct {
 	SelectFileByTaskID string
 	Count              string
 }{
-	Select: `SELECT id, mentor_id, student_id, title, description, deadline, status, grade, feedback, created_at, updated_at FROM tasks `,
-	SelectDTO: `SELECT t.id, t.mentor_id, mentor.name AS mentor_name, t.student_id, student.name AS student_name, t.title, t.description, t.deadline, t.status, t.grade, t.feedback, t.created_at, t.updated_at, tf.id AS latest_file_id, tf.file_url AS latest_file_url
+	Select: `SELECT id, mentor_id, student_id, title, description, deadline, status, grade, feedback, submission_url, created_at, updated_at FROM tasks `,
+	SelectDTO: `SELECT t.id, t.mentor_id, mentor.name AS mentor_name, t.student_id, student.name AS student_name, t.title, t.description, t.deadline, t.status, t.grade, t.feedback, t.submission_url, t.created_at, t.updated_at, tf.id AS latest_file_id, tf.file_url AS latest_file_url
 		FROM tasks t
 		LEFT JOIN auth_user mentor ON mentor.id = t.mentor_id
 		LEFT JOIN auth_user student ON student.id = t.student_id
@@ -39,14 +39,14 @@ var TaskQuery = struct {
 			ORDER BY tf1.created_at DESC
 			LIMIT 1
 		) tf ON TRUE`,
-	Insert: `INSERT INTO tasks (id, mentor_id, student_id, title, description, deadline, status, created_at, updated_at)
-		VALUES (:id, :mentor_id, :student_id, :title, :description, :deadline, :status, :created_at, :updated_at) RETURNING id`,
-	Update:             `UPDATE tasks SET mentor_id = :mentor_id, student_id = :student_id, title = :title, description = :description, deadline = :deadline, status = :status, grade = :grade, feedback = :feedback, updated_at = :updated_at WHERE id = :id`,
-	UpdateSubmitted:    `UPDATE tasks SET status = :status, updated_at = :updated_at WHERE id = :id`,
+	Insert: `INSERT INTO tasks (id, mentor_id, student_id, title, description, deadline, status, submission_url, created_at, updated_at)
+		VALUES (:id, :mentor_id, :student_id, :title, :description, :deadline, :status, :submission_url, :created_at, :updated_at) RETURNING id`,
+	Update:             `UPDATE tasks SET mentor_id = :mentor_id, student_id = :student_id, title = :title, description = :description, deadline = :deadline, status = :status, grade = :grade, feedback = :feedback, submission_url = :submission_url, updated_at = :updated_at WHERE id = :id`,
+	UpdateSubmitted:    `UPDATE tasks SET status = :status, submission_url = :submission_url, updated_at = :updated_at WHERE id = :id`,
 	UpdateGrade:        `UPDATE tasks SET status = :status, grade = :grade, feedback = :feedback, updated_at = :updated_at WHERE id = :id`,
 	ExistByStudentID:   `SELECT id FROM tasks`,
 	ExistByMentorID:    `SELECT id FROM tasks`,
-	ResolveByID:        `SELECT id, mentor_id, student_id, title, description, deadline, status, grade, feedback, created_at, updated_at FROM tasks`,
+	ResolveByID:        `SELECT id, mentor_id, student_id, title, description, deadline, status, grade, feedback, submission_url, created_at, updated_at FROM tasks`,
 	SelectFileByTaskID: `SELECT id, task_id, file_url, uploaded_by, created_at FROM task_files `,
 	Count:              `SELECT count(*) FROM tasks `,
 }

@@ -79,7 +79,7 @@ func (s *TaskServiceImpl) Create(ctx context.Context, req RequestTaskFormat) (ne
 	// Notify Student about new task
 	socket.GetInstance().SendToUser(req.StudentID.String(), "new_notification", map[string]interface{}{
 		"title":   "Tugas Baru",
-		"message": "Anda mendapatkan tugas baru: " + req.Title,
+		"message": "Anda mendapatkan tugas baru: " + req.Title + ". Deadline: " + req.Deadline.Format("02-01-2006 15:04") + ".",
 		"type":    "task",
 	})
 
@@ -126,6 +126,9 @@ func (s *TaskServiceImpl) SubmitTaskFile(ctx context.Context, req RequestSubmitT
 			return err
 		}
 		task.Status = "submitted"
+		if req.SubmissionURL != "" {
+			task.SubmissionURL = &req.SubmissionURL
+		}
 		if err := taskRepo.UpdateSubmittedTx(ctx, tx, task); err != nil {
 			return err
 		}
@@ -136,9 +139,14 @@ func (s *TaskServiceImpl) SubmitTaskFile(ctx context.Context, req RequestSubmitT
 	}
 
 	// Notify Mentor about submission
+	studentName := "Mahasiswa"
+	if assignment, err := s.MentorAssignmentRepository.ResolveMentorByStudentID(ctx, task.StudentID); err == nil && assignment.StudentName != "" {
+		studentName = assignment.StudentName
+	}
+
 	socket.GetInstance().SendToUser(task.MentorID.String(), "new_notification", map[string]interface{}{
 		"title":   "Tugas Dikumpulkan",
-		"message": "Mahasiswa telah mengumpulkan tugas: " + task.Title,
+		"message": "Mahasiswa " + studentName + " telah mengumpulkan tugas: " + task.Title,
 		"type":    "task_submission",
 	})
 

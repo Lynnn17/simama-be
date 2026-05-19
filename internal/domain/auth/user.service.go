@@ -85,7 +85,7 @@ func (u *UserServiceImpl) ValidasiLogin(input InputLogin) (user []User, exist bo
 
 	exist, err = u.UserRepository.ExistByUsernameOrEmail(input.Username)
 	if !exist {
-		err = errors.New("Username/Email atau password yang Anda masukkan salah. Silakan coba lagi.")
+		err = errors.New("Email atau password yang Anda masukkan salah. Silakan coba lagi.")
 		errs <- err
 		return
 	}
@@ -125,7 +125,7 @@ func (u *UserServiceImpl) Login(input InputLogin, ipAddress string, userAgent st
 			Kode:       input.Username,
 		}
 		_ = u.LogSystemRepository.CreateLogSystem(logSystem)
-		err = errors.New("Username/Email atau password yang Anda masukkan salah. Silakan coba lagi.")
+		err = errors.New("Email atau password yang Anda masukkan salah. Silakan coba lagi.")
 		errs <- err
 		return
 	}
@@ -157,7 +157,7 @@ func (u *UserServiceImpl) Login(input InputLogin, ipAddress string, userAgent st
 			Kode:       datauser.ID.String(),
 		}
 		_ = u.LogSystemRepository.CreateLogSystem(logSystem)
-		err = errors.New("Username/Email atau password yang Anda masukkan salah. Silakan coba lagi.")
+		err = errors.New("Email atau password yang Anda masukkan salah. Silakan coba lagi.")
 		errs <- err
 		return
 	}

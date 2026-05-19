@@ -75,6 +75,7 @@ func (s *MentorAssignmentServiceImpl) Create(ctx context.Context, req RequestMen
 			"type":    "assignment",
 		}
 		hub.SendToUser(req.MentorID.String(), "new_notification", notificationMsg)
+		hub.SendToUser(req.MentorID.String(), "refresh_students", nil)
 	}
 
 	return newMentorAssignment, nil
