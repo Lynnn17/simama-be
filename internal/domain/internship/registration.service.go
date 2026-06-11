@@ -75,8 +75,8 @@ func (s *RegistrationServiceImpl) Create(ctx context.Context, req RequestRegistr
 		"message": "Ada lamaran magang baru dari " + req.FullName,
 		"type":    "registration",
 	}
-	hub.BroadcastToRole("HA01", "new_notification", notificationMsg)
-	hub.BroadcastToRole("HA01", "refresh_registrations", nil)
+	hub.BroadcastToRole("HA03", "new_notification", notificationMsg)
+	hub.BroadcastToRole("HA03", "refresh_registrations", nil)
 
 	// Send email notification with Retry Logic
 	go func() {

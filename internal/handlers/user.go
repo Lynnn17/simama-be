@@ -44,7 +44,6 @@ func (u *UserHandler) Router(r chi.Router, middleware *middleware.JWT) {
 			r.Use(middleware.VerifyToken)
 			r.Post("/", u.CreateUser)
 			r.Put("/{id}", u.UpdateUser)
-			r.Put("/fcm-token/{id}", u.UpdateUserFcmToken)
 			r.Delete("/{id}", u.DeleteUser)
 			r.Put("/active-status/{id}", u.UpdateActiveStatus)
 			r.Get("/all", u.GetAllData)
@@ -53,7 +52,6 @@ func (u *UserHandler) Router(r chi.Router, middleware *middleware.JWT) {
 			r.Put("/password/{id}", u.ChangePassword)
 			r.Put("/password/pw/{id}", u.ChangePassword)
 			r.Put("/password/reset/{id}", u.ResetPassword)
-			r.Post("/update-foto", u.UpdateFoto)
 		})
 	})
 }
@@ -469,50 +467,6 @@ func (u *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	response.WithMessage(w, http.StatusOK, "success")
 }
 
-// UpdateUserFcmToken update data fcm token user
-// @Summary update data fcm token user
-// @Description This endpoint to update user entity
-// @Tags Users
-// @Security BearerAuth
-// @Param id path string true "The User identifier."
-// @Param users body auth.UserUpdateFcmTokenFormat true "The User update Fcm Token data"
-// @Produce json
-// @Success 201 {object} response.Base
-// @Failure 400 {object} response.Base
-// @Failure 409 {object} response.Base
-// @Failure 500 {object} response.Base
-// @Router /v1/user/fcm-token/{id} [put]
-func (u *UserHandler) UpdateUserFcmToken(w http.ResponseWriter, r *http.Request) {
-	var input auth.UserUpdateFcmTokenFormat
-
-	err := json.NewDecoder(r.Body).Decode(&input)
-	if err != nil {
-		err = errors.New("Format input tidak sesuai!")
-		response.WithError(w, failure.BadRequest(err))
-		return
-	}
-
-	err = shared.GetValidator().Struct(input)
-	if err != nil {
-		err = errors.New("Format input tidak sesuai!")
-		response.WithError(w, failure.BadRequest(err))
-		return
-	}
-
-	id, err := uuid.FromString(chi.URLParam(r, "id"))
-	if err != nil {
-		response.WithError(w, failure.BadRequest(err))
-		return
-	}
-
-	err = u.UserService.UpdateUserFcmToken(id, input)
-	if err != nil {
-		response.WithError(w, failure.BadRequest(err))
-		return
-	}
-
-	response.WithMessage(w, http.StatusOK, "success")
-}
 
 // UpdateUser delete user data
 // @Summary delete user data
@@ -619,63 +573,6 @@ func (h *UserHandler) ResolveUserById(w http.ResponseWriter, r *http.Request) {
 	response.WithJSON(w, http.StatusOK, user)
 }
 
-// UpdateFotoProfile adalah untuk mengupdate foto pegawai.
-// @Summary mengupdate data foto pegawai.
-// @Description Endpoint ini adalah untuk mengupdate data foto pegawai.
-// @Tags Users
-// @Produce json
-// @Security BearerAuth
-// @Param id formData string false "id pegawai"
-// @Param file formData file true "Foto Baru"
-// @Success 200 {object} response.Base{data=auth.User}
-// @Failure 400 {object} response.Base
-// @Failure 500 {object} response.Base
-// @Router /v1/user/update-foto [post]
-func (u *UserHandler) UpdateFoto(w http.ResponseWriter, r *http.Request) {
-	id := r.FormValue("id")
-	userID, err := uuid.FromString(id)
-	if err != nil {
-		response.WithError(w, err)
-		return
-	}
-
-	user, err := u.UserService.ResolveUserById(userID)
-	if err != nil {
-		response.WithError(w, err)
-		return
-	}
-
-	uploadedFile, _, _ := r.FormFile("file")
-	var path string
-	if uploadedFile != nil {
-		filepath, err := u.UserService.UploadFile(w, r, "")
-		if err != nil {
-			response.WithError(w, failure.BadRequest(err))
-			return
-		}
-		path = filepath
-	} else {
-		path = ""
-	}
-
-	reqFormat := auth.UpdateFotoRequest{
-		Id:   userID,
-		Foto: path,
-	}
-
-	if user.Foto != nil {
-		reqFormat.FotoLama = *user.Foto
-	}
-
-	data, err := u.UserService.UpdateFoto(reqFormat)
-	if err != nil {
-		fmt.Print("error response")
-		response.WithError(w, failure.BadRequest(err))
-		return
-	}
-
-	response.WithJSON(w, http.StatusCreated, data)
-}
 
 // captchaHandler generates a new captcha ID and returns it along with the image URL.
 // @Summary Generate a new captcha

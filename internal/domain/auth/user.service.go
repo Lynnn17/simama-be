@@ -29,7 +29,6 @@ type UserService interface {
 	ChangePassword(id uuid.UUID, input InputChangePassword) error
 	ResetPassword(id uuid.UUID, input InputChangePassword) error
 	UpdateUser(id uuid.UUID, user UserUpdateFormat, userId uuid.UUID, ipAddress string, userAgent string) error
-	UpdateUserFcmToken(id uuid.UUID, user UserUpdateFcmTokenFormat) error
 	ValidasiLogin(input InputLogin) (user []User, exist bool, err error)
 	Login(input InputLogin, ipAddress string, userAgent string) (ResponseLogin, bool, bool, error)
 	GetAll(ctx context.Context, req model.StandardRequestUser) (data []User, err error)
@@ -38,7 +37,6 @@ type UserService interface {
 	ResolveUserByName(name string) (user UserDTO, err error)
 	SoftDelete(id uuid.UUID, userID uuid.UUID) error
 	UpdateActiveStatus(id uuid.UUID, userID uuid.UUID, active bool) error
-	UpdateFoto(req UpdateFotoRequest) (data User, err error)
 	UploadFile(w http.ResponseWriter, r *http.Request, path_file string) (path string, err error)
 }
 
@@ -293,21 +291,6 @@ func (u *UserServiceImpl) UpdateUser(id uuid.UUID, input UserUpdateFormat, userI
 	return u.UserRepository.TransactionUpdateUser(user)
 }
 
-// UpdateUserFcmToken is the service function to update user data
-func (u *UserServiceImpl) UpdateUserFcmToken(id uuid.UUID, input UserUpdateFcmTokenFormat) error {
-	user, err := u.UserRepository.ResolveUserByID(id)
-	if err == sql.ErrNoRows {
-		err = errors.New("User tidak ditemukan!")
-		return err
-	}
-	if err != nil {
-		return err
-	}
-
-	user.UpdateFcmToken(input)
-
-	return u.UserRepository.UpdateUser(id, user)
-}
 
 func (u *UserServiceImpl) createLoginActivity(email chan string, errs chan error) {
 	e, err := <-email, <-errs
@@ -318,8 +301,8 @@ func (u *UserServiceImpl) createLoginActivity(email chan string, errs chan error
 	fmt.Println(status)
 	fmt.Println(e)
 
-	// loginActivity := NewCreateActivityLogin(e, status)
-	// err = u.UserRepository.CreateLoginActivity(loginActivity)
+	loginActivity := NewCreateActivityLogin(e, status)
+	err = u.UserRepository.CreateLoginActivity(loginActivity)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed creating login activity")
 	}
@@ -450,29 +433,3 @@ func (s *UserServiceImpl) UploadFile(w http.ResponseWriter, r *http.Request, pat
 	return
 }
 
-func (s *UserServiceImpl) UpdateFoto(req UpdateFotoRequest) (data User, err error) {
-	if req.FotoLama != "" {
-		dir := s.Config.App.File.Dir
-		FotoProfile := req.FotoLama
-		fileLocation := filepath.Join(dir, FotoProfile)
-		fmt.Println("path", fileLocation)
-		err = os.Remove(fileLocation)
-		if err != nil {
-			log.Error().Msgf("service.Delete Foto Profile error", err)
-		}
-	}
-
-	var now = time.Now()
-	newData := ModelUpdateFoto{
-		Id:        req.Id,
-		Foto:      req.Foto,
-		UpdatedAt: &now,
-		UpdatedBy: &req.Id,
-	}
-	err = s.UserRepository.UpdateFoto(newData)
-
-	if err != nil {
-		log.Error().Msgf("service.Profile error", err)
-	}
-	return data, nil
-}

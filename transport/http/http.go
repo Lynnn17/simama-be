@@ -21,6 +21,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/httprate"
 	"github.com/rs/zerolog/log"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -144,6 +145,8 @@ func (h *HTTP) respondToSigterm(done chan os.Signal) {
 func (h *HTTP) setupMiddleware() {
 	h.mux.Use(middleware.Logger)
 	h.mux.Use(middleware.Recoverer)
+	h.mux.Use(middleware.Timeout(30 * time.Second))
+	h.mux.Use(httprate.LimitByIP(100, 1*time.Minute))
 	h.mux.Use(h.serverStateMiddleware)
 	h.setupCORS()
 }

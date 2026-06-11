@@ -31,7 +31,7 @@ var (
 		Insert: `INSERT INTO auth_user (id, name, username, email, password, role_id, status, active, created_at, created_by) 
 			VALUES (:id, :name, :username, :email, :password, :role_id, :status, :active, :created_at, :created_by) `,
 		Exist: `SELECT COUNT(u.id) > 0 FROM auth_user u`,
-		Select: `SELECT u.id, u.name, u.username, u.email, u.password, u.status, u.role_id, u.foto, u.active, u.mobile_fcm_token, u.web_fcm_token, u.created_by, u.updated_by, u.created_at, u.updated_at, u.deleted_at, u.is_deleted 
+		Select: `SELECT u.id, u.name, u.username, u.email, u.password, u.status, u.role_id, u.active, u.created_by, u.updated_by, u.created_at, u.updated_at, u.deleted_at, u.is_deleted 
 			FROM auth_user u `,
 		SelectDTO: `SELECT u.id, u.name, u.username, u.email, u.password, u.status, r.name as role, r.id as role_id, u.active 
 			FROM auth_user u
@@ -47,8 +47,6 @@ var (
 			password=:password, 
 			status=:status, 
 			role_id=:role_id,
-			mobile_fcm_token=:mobile_fcm_token,
-			web_fcm_token=:web_fcm_token,
 			is_deleted=:is_deleted,
 			active=:active,
 			deleted_at=:deleted_at,
@@ -56,10 +54,6 @@ var (
 			updated_at=:updated_at `,
 		UpdatePassword: `UPDATE auth_user SET
 			password=:password,
-			updated_at=:updated_at `,
-		UpdateFoto: `UPDATE auth_user SET 
-			id=:id, 
-			foto=:foto,
 			updated_at=:updated_at `,
 	}
 
@@ -111,7 +105,6 @@ type UserRepository interface {
 	TransactionUpdateUser(user User) error
 	UpdateUser(id uuid.UUID, user User) error
 	UpdateUserPassword(id uuid.UUID, user User) error
-	UpdateFoto(data ModelUpdateFoto) error
 }
 
 // TransactionCreateUser digunakan untuk menambahkan user baru dalam blok transaction
@@ -448,30 +441,6 @@ func (r *UserRepositoryPostgreSQL) GetAll(ctx context.Context, req model.Standar
 			return
 		}
 		data = append(data, user)
-	}
-	return
-}
-
-func (r *UserRepositoryPostgreSQL) UpdateFoto(data ModelUpdateFoto) error {
-	return r.DB.WithTransaction(func(tx *sqlx.Tx, e chan error) {
-		if err := txUpdateFoto(tx, data); err != nil {
-			e <- err
-			return
-		}
-		e <- nil
-	})
-}
-
-func txUpdateFoto(tx *sqlx.Tx, data ModelUpdateFoto) (err error) {
-	stmt, err := tx.PrepareNamed(userQuery.UpdateFoto + " where id=:id")
-	if err != nil {
-		logger.ErrorWithStack(err)
-		return
-	}
-	defer stmt.Close()
-	_, err = stmt.Exec(data)
-	if err != nil {
-		logger.ErrorWithStack(err)
 	}
 	return
 }
