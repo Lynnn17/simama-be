@@ -21,10 +21,7 @@ type User struct {
 	Password       string     `json:"password" db:"password"`
 	RoleId         string     `json:"roleId" db:"role_id"`
 	Status         *string    `json:"status" db:"status"`
-	Foto           *string    `json:"foto" db:"foto"`
 	Active         bool       `db:"active" json:"active"`
-	MobileFcmToken string     `db:"mobile_fcm_token" json:"mobileFcmToken"`
-	WebFcmToken    string     `db:"web_fcm_token" json:"webFcmToken"`
 	CreatedBy      *uuid.UUID `db:"created_by" json:"createdBy"`
 	UpdatedBy      *uuid.UUID `db:"updated_by" json:"updatedBy"`
 	CreatedAt      *time.Time `db:"created_at" json:"createdAt"`
@@ -42,19 +39,10 @@ type UserUpdateFormat struct {
 	Password       string    `json:"password" db:"password"`
 	RoleId         string    `json:"roleId" db:"roleId"`
 	Status         *string   `json:"status" db:"status"`
-	Foto           *string   `json:"foto" db:"foto"`
-	MobileFcmToken string    `db:"mobile_fcm_token" json:"mobileFcmToken"`
-	WebFcmToken    string    `db:"web_fcm_token" json:"webFcmToken"`
 	Active         bool      `json:"active" db:"active"`
 	UserID         uuid.UUID `json:"-"`
 }
 
-// UserUpdateFcmTokenFormat
-type UserUpdateFcmTokenFormat struct {
-	ID       uuid.UUID `json:"id"`
-	Device   string    `json:"device" validate:"required,oneof=MOBILE WEB"`
-	FcmToken string    `json:"fcmToken"`
-}
 
 // UserDTO digunakan untuk model join ke Role
 type UserDTO struct {
@@ -66,7 +54,6 @@ type UserDTO struct {
 	RoleId   string    `json:"roleId" db:"role_id"`
 	Role     *string   `json:"role" db:"role"`
 	Status   *string   `json:"status" db:"status"`
-	Foto     *string   `json:"foto" db:"foto"`
 	Active   bool      `db:"active" json:"active"`
 }
 
@@ -235,15 +222,7 @@ func (u *User) UpdateUserFormat(id uuid.UUID, user UserUpdateFormat) {
 	}
 }
 
-// Update is function to transform into to User entity untuk update token fcm
-func (u *User) UpdateFcmToken(user UserUpdateFcmTokenFormat) {
-	u.ID = user.ID
-	if user.Device == "MOBILE" {
-		u.MobileFcmToken = user.FcmToken
-	} else if user.Device == "WEB" {
-		u.WebFcmToken = user.FcmToken
-	}
-}
+
 
 // InputLogin is struct as login json body
 type InputLogin struct {
@@ -273,7 +252,6 @@ func (r *InputLogin) Response(user UserDTO, role Role, accessToken string) Respo
 			Name:     user.Name,
 			Status:   user.Status,
 			Email:    user.Email,
-			Foto:     user.Foto,
 			Role:     role,
 		},
 	}
@@ -294,7 +272,6 @@ type ResponseLoginUser struct {
 	Status        *string   `json:"status" db:"status"`
 	RoleId        string    `json:"roleId" db:"role_id"`
 	FirebaseToken *string   `json:"firebaseToken"`
-	Foto          *string   `json:"foto" db:"foto"`
 	Role          Role      `json:"role"`
 }
 
@@ -336,18 +313,6 @@ func (u *User) SoftActive(userID uuid.UUID, active bool) {
 	u.UpdatedBy = &userID
 }
 
-type ModelUpdateFoto struct {
-	Id        uuid.UUID  `db:"id" json:"id"`
-	Foto      string     `json:"foto" db:"foto"`
-	UpdatedAt *time.Time `db:"updated_at" json:"updatedAt"`
-	UpdatedBy *uuid.UUID `db:"updated_by" json:"updatedBy"`
-}
-
-type UpdateFotoRequest struct {
-	Id       uuid.UUID `db:"id" json:"id"`
-	Foto     string    `json:"file" db:"foto"`
-	FotoLama string    `db:"foto_lama" json:"fotoLama"`
-}
 
 var ColumnMappUser = map[string]interface{}{
 	"id":         "u.id",
