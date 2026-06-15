@@ -68,7 +68,7 @@ func (s *RegistrationServiceImpl) Create(ctx context.Context, req RequestRegistr
 		return Registration{}, err
 	}
 
-	// Send Real-time Notification to HRD (Role HA01)
+	// Send Real-time Notification to HRD (Role HA03)
 	hub := socket.GetInstance()
 	notificationMsg := map[string]interface{}{
 		"title":   "Pendaftar Baru",

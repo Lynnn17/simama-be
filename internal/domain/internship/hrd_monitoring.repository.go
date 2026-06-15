@@ -49,7 +49,7 @@ func (r *HRDMonitoringRepositoryPostgreSQL) GetMonitoringData(ctx context.Contex
 				ELSE $1::date - INTERVAL '1 day' 
 			END
 		)::date
-		WHERE u.role_id = 'HA02' AND u.active = true AND ma.id IS NOT NULL
+		WHERE u.role_id = 'HA02' AND u.active = true AND ma.id IS NOT NULL AND ma.is_active = true AND ma.assigned_at::date <= $1::date
 	`
 
 	if req.Search != "" {

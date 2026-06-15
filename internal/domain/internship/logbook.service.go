@@ -76,7 +76,7 @@ func (s *LogbookServiceImpl) Create(ctx context.Context, req RequestLogbookForma
 	message := fmt.Sprintf("%s telah mengumpulkan tugas", studentName)
 
 	// Trigger real-time refresh for HRD Dashboard
-	socket.GetInstance().BroadcastToRole("HA01", "monitoring_update", message)
+	socket.GetInstance().BroadcastToRole("HA03", "monitoring_update", message)
 
 	// Trigger real-time refresh for Mentor Dashboard
 	socket.GetInstance().BroadcastToRole("HA04", "refresh_logbooks", message)

@@ -325,7 +325,7 @@ func (r *TaskRepositoryPostgreSQL) ResolveAllByMentorID(ctx context.Context, men
 	filterBuff.WriteString(" WHERE t.mentor_id = ? ")
 
 	if req.Search != "" {
-		filterBuff.WriteString(fmt.Sprintf(" AND (t.title ILIKE '%%%s%%') ", req.Search, req.Search))
+		filterBuff.WriteString(fmt.Sprintf(" AND (t.title ILIKE '%%%s%%') ", req.Search))
 	}
 
 	if req.Status != "" {
