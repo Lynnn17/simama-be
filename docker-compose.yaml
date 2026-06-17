@@ -11,3 +11,5 @@ services:
     volumes:
       - ./.env:/app/.env:Z
       - ../files:/app/files/:Z
+      - ../cv:/app/cv:Z
+      - ../tasks:/app/tasks:Z
