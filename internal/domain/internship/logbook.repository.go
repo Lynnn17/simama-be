@@ -223,7 +223,7 @@ func (r *LogbookRepositoryPostgreSQL) ResolveAllByMentorID(ctx context.Context, 
 			FROM mentor_assignments ma
 			INNER JOIN auth_user s ON s.id = ma.student_id
 			LEFT JOIN logbooks l ON l.student_id = ma.student_id AND l.log_date::date = ?
-			WHERE ma.mentor_id = ? AND ma.is_active = true
+			WHERE ma.mentor_id = ? AND ma.is_active = true AND ma.assigned_at::date <= ?::date
 		`
 
 		var filterSQL string
@@ -240,7 +240,7 @@ func (r *LogbookRepositoryPostgreSQL) ResolveAllByMentorID(ctx context.Context, 
 		}
 
 		countQuery := r.DB.Read.Rebind("SELECT count(*) " + queryBase + filterSQL)
-		err = r.DB.Read.QueryRowContext(ctx, countQuery, req.Date, mentorID).Scan(&totalData)
+		err = r.DB.Read.QueryRowContext(ctx, countQuery, req.Date, mentorID, req.Date).Scan(&totalData)
 		if err != nil {
 			logger.ErrorWithStack(err)
 			return
@@ -272,14 +272,14 @@ func (r *LogbookRepositoryPostgreSQL) ResolveAllByMentorID(ctx context.Context, 
 			INNER JOIN auth_user s ON s.id = ma.student_id
 			LEFT JOIN auth_user mentor ON mentor.id = ma.mentor_id
 			LEFT JOIN logbooks l ON l.student_id = ma.student_id AND l.log_date::date = ?
-			WHERE ma.mentor_id = ? AND ma.is_active = true
+			WHERE ma.mentor_id = ? AND ma.is_active = true AND ma.assigned_at::date <= ?::date
 		`
 
 		selectSQL += filterSQL
 		selectSQL += " ORDER BY s.name ASC LIMIT ? OFFSET ? "
 
 		finalQuery := r.DB.Read.Rebind(selectSQL)
-		rows, err := r.DB.Read.QueryxContext(ctx, finalQuery, req.Date, req.Date, mentorID, req.PageSize, offset)
+		rows, err := r.DB.Read.QueryxContext(ctx, finalQuery, req.Date, req.Date, mentorID, req.Date, req.PageSize, offset)
 		if err != nil {
 			logger.ErrorWithStack(err)
 			return data, err
