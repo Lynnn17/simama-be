@@ -79,9 +79,10 @@ func (s *TaskServiceImpl) Create(ctx context.Context, req RequestTaskFormat) (ne
 	}
 
 	// Notify Student about new task
+	loc, _ := time.LoadLocation("Asia/Jakarta")
 	socket.GetInstance().SendToUser(req.StudentID.String(), "new_notification", map[string]interface{}{
 		"title":   "Tugas Baru",
-		"message": "Anda mendapatkan tugas baru: " + req.Title + ". Deadline: " + req.Deadline.Format("02-01-2006 15:04") + ".",
+		"message": "Anda mendapatkan tugas baru: " + req.Title + ". Deadline: " + req.Deadline.In(loc).Format("02-01-2006 15:04") + ".",
 		"type":    "task",
 	})
 
@@ -181,7 +182,8 @@ func (s *TaskServiceImpl) GradeTask(ctx context.Context, id uuid.UUID, req Reque
 
 	// 1. Injeksi Timestamp untuk Feedback
 	if req.Feedback != nil && *req.Feedback != "" {
-		waktuSekarang := time.Now().Format("2006-01-02 15:04")
+		loc, _ := time.LoadLocation("Asia/Jakarta")
+		waktuSekarang := time.Now().In(loc).Format("02-01-2006 15:04")
 		prefix := ""
 		if req.Status == "revision_needed" {
 			prefix = " - Revisi"
