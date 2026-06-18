@@ -14,15 +14,18 @@ import (
 var TaskFileQuery = struct {
 	Insert         string
 	SelectByTaskID string
+	DeleteByTaskID string
 }{
 	Insert:         `INSERT INTO task_files (id, task_id, file_url, uploaded_by, created_at) VALUES (:id, :task_id, :file_url, :uploaded_by, :created_at) RETURNING id`,
 	SelectByTaskID: `SELECT id, task_id, file_url, uploaded_by, created_at FROM task_files WHERE task_id = ? ORDER BY created_at DESC`,
+	DeleteByTaskID: `DELETE FROM task_files WHERE task_id = ?`,
 }
 
 type TaskFileRepository interface {
 	Create(ctx context.Context, data *TaskFile) error
 	CreateTx(ctx context.Context, tx *sqlx.Tx, data *TaskFile) error
 	ResolveByTaskID(ctx context.Context, taskID uuid.UUID) (data []TaskFile, err error)
+	DeleteByTaskIDTx(ctx context.Context, tx *sqlx.Tx, taskID uuid.UUID) error
 }
 
 type TaskFileRepositoryPostgreSQL struct {
@@ -77,4 +80,12 @@ func (r *TaskFileRepositoryPostgreSQL) ResolveByTaskID(ctx context.Context, task
 		logger.ErrorWithStack(err)
 	}
 	return
+}
+
+func (r *TaskFileRepositoryPostgreSQL) DeleteByTaskIDTx(ctx context.Context, tx *sqlx.Tx, taskID uuid.UUID) error {
+	_, err := tx.ExecContext(ctx, r.DB.Write.Rebind(TaskFileQuery.DeleteByTaskID), taskID)
+	if err != nil {
+		logger.ErrorWithStack(err)
+	}
+	return err
 }

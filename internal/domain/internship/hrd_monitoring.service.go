@@ -20,18 +20,7 @@ func ProvideHRDMonitoringServiceImpl(repo HRDMonitoringRepository) *HRDMonitorin
 }
 
 func (s *HRDMonitoringServiceImpl) GetMonitoringData(ctx context.Context, req RequestHRDMonitoringFormat) (data []HRDMonitoringDTO, err error) {
-	data, err = s.Repo.GetMonitoringData(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Printf("DEBUG: Monitoring Data Length: %d\n", len(data))
-
 	now := time.Now()
-	thresholdHour := 17
-	todayStr := now.Format("2006-01-02")
-
-	// Parse monitoring date
 	monitoringDate := now
 	if req.Date != "" {
 		parsedDate, err := time.Parse("2006-01-02", req.Date)
@@ -39,8 +28,23 @@ func (s *HRDMonitoringServiceImpl) GetMonitoringData(ctx context.Context, req Re
 			monitoringDate = parsedDate
 		}
 	}
-	isToday := req.Date == "" || req.Date == todayStr
 	weekday := monitoringDate.Weekday()
+
+	if weekday == time.Saturday || weekday == time.Sunday {
+		return make([]HRDMonitoringDTO, 0), nil
+	}
+
+	data, err = s.Repo.GetMonitoringData(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("DEBUG: Monitoring Data Length: %d\n", len(data))
+
+	thresholdHour := 17
+	todayStr := now.Format("2006-01-02")
+
+	isToday := req.Date == "" || req.Date == todayStr
 
 	// Use WIB timezone for hour comparison
 	loc, _ := time.LoadLocation("Asia/Jakarta")

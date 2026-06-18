@@ -1,15 +1,17 @@
 package internship
 
 import (
-	"bytes"
 	"archive/zip"
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"context"
-	"errors"
 	"strings"
+	"time"
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/jmoiron/sqlx"
@@ -122,6 +124,11 @@ func (s *TaskServiceImpl) SubmitTaskFile(ctx context.Context, req RequestSubmitT
 	err = s.TxManager.WithTx(ctx, func(tx *sqlx.Tx) error {
 		fileRepo := s.TaskFileRepository.(*TaskFileRepositoryPostgreSQL)
 		taskRepo := s.TaskRepository.(*TaskRepositoryPostgreSQL)
+
+		if err := fileRepo.DeleteByTaskIDTx(ctx, tx, req.TaskID); err != nil {
+			return err
+		}
+
 		if err := fileRepo.CreateTx(ctx, tx, &newTaskFile); err != nil {
 			return err
 		}
@@ -171,8 +178,32 @@ func (s *TaskServiceImpl) GradeTask(ctx context.Context, id uuid.UUID, req Reque
 	if assignment.MentorID != req.UserID {
 		return Task{}, errors.New("access denied")
 	}
+
+	// 1. Injeksi Timestamp untuk Feedback
+	if req.Feedback != nil && *req.Feedback != "" {
+		waktuSekarang := time.Now().Format("2006-01-02 15:04")
+		prefix := ""
+		if req.Status == "revision_needed" {
+			prefix = " - Revisi"
+		} else if req.Status == "graded" {
+			prefix = " - Nilai"
+		}
+		formattedFeedback := "\n[" + waktuSekarang + prefix + "] " + *req.Feedback
+		req.Feedback = &formattedFeedback
+	}
+
 	newTask, _ = task.UpdateGradeFormat(req)
 	newTask.ID = task.ID
+
+	// 2. Implementasi json.Marshal untuk Kolom Nilai (grade)
+	if req.Grade != nil {
+		gradeBytes, err := json.Marshal(req.Grade)
+		if err == nil {
+			gradeStr := string(gradeBytes)
+			newTask.Grade = &gradeStr
+		}
+	}
+
 	err = s.TaskRepository.UpdateGrade(ctx, newTask)
 	if err != nil {
 		return Task{}, err
@@ -181,8 +212,7 @@ func (s *TaskServiceImpl) GradeTask(ctx context.Context, id uuid.UUID, req Reque
 	// Notify Student about grade/feedback
 	if newTask.Status == "graded" {
 		socket.GetInstance().SendToUser(task.StudentID.String(), "new_notification", map[string]interface{}{
-			"title":   "Tugas Dinilai",
-			"message": "Tugas '" + task.Title + "' Anda telah dinilai. Nilai: " + fmt.Sprintf("%d", *newTask.Grade) + ". Lihat feedback.",
+			"message": "Tugas '" + task.Title + "' Anda telah dinilai. Lihat feedback.",
 			"type":    "task_graded",
 		})
 	} else if newTask.Status == "revision_needed" {
