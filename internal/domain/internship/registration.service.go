@@ -81,7 +81,8 @@ func (s *RegistrationServiceImpl) Create(ctx context.Context, req RequestRegistr
 	// Send email notification with Retry Logic
 	go func() {
 		subject := "Konfirmasi Penerimaan Lamaran Magang - PT Greatsoft Solusi Indonesia"
-		now := time.Now().Format("02-01-2006 15:04")
+		loc, _ := time.LoadLocation("Asia/Jakarta")
+		now := time.Now().In(loc).Format("02-01-2006 15:04")
 		message := "Halo " + req.FullName + ",\n\n" +
 			"Lamaran magang Anda telah berhasil masuk ke dalam sistem kami.\n\n" +
 			"Berikut adalah pembaruan informasi Anda:\n" +
@@ -230,7 +231,8 @@ func (s *RegistrationServiceImpl) UpdateStatus(ctx context.Context, id uuid.UUID
 
 			// Send Email with Retry Logic
 			subject := "Pengumuman Seleksi Program Magang - PT Greatsoft Solusi Indonesia"
-			now := time.Now().Format("02-01-2006 15:04")
+			loc, _ := time.LoadLocation("Asia/Jakarta")
+			now := time.Now().In(loc).Format("02-01-2006 15:04")
 			message := "Halo " + existing.FullName + ",\n\n" +
 				"Selamat! Kami dengan senang hati menginformasikan bahwa Anda telah lulus seleksi program magang di PT Greatsoft Solusi Indonesia.\n\n" +
 				"Berikut adalah pembaruan informasi Anda:\n" +
@@ -260,7 +262,8 @@ func (s *RegistrationServiceImpl) UpdateStatus(ctx context.Context, id uuid.UUID
 		} else if status == "rejected" {
 			// Send rejection email with similar retry logic
 			subject := "Pengumuman Seleksi Program Magang - PT Greatsoft Solusi Indonesia"
-			now := time.Now().Format("02-01-2006 15:04")
+			loc, _ := time.LoadLocation("Asia/Jakarta")
+			now := time.Now().In(loc).Format("02-01-2006 15:04")
 			message := "Halo " + existing.FullName + ",\n\n" +
 				"Terima kasih atas ketertarikan dan antusiasme Anda untuk bergabung dalam program magang di PT Greatsoft Solusi Indonesia, serta atas waktu yang Anda luangkan untuk melengkapi proses pendaftaran.\n\n" +
 				"Berikut adalah pembaruan informasi Anda:\n" +
