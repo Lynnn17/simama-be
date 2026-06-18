@@ -1,6 +1,7 @@
 package internship
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/gofrs/uuid/v5"
@@ -14,9 +15,10 @@ type Task struct {
 	Description   string     `db:"description" json:"description"`
 	Deadline      time.Time  `db:"deadline" json:"deadline"`
 	Status        string     `db:"status" json:"status"`
-	Grade         *int       `db:"grade" json:"grade"`
+	Grade         *string    `db:"grade" json:"grade"`
 	Feedback      *string    `db:"feedback" json:"feedback"`
 	SubmissionURL *string    `db:"submission_url" json:"submissionUrl"`
+	Criteria      *string    `db:"criteria" json:"criteria"`
 	CreatedAt     *time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt     *time.Time `db:"updated_at" json:"updatedAt"`
 }
@@ -31,9 +33,10 @@ type TaskDTO struct {
 	Description   string     `db:"description" json:"description"`
 	Deadline      time.Time  `db:"deadline" json:"deadline"`
 	Status        string     `db:"status" json:"status"`
-	Grade         *int       `db:"grade" json:"grade"`
+	Grade         *string    `db:"grade" json:"grade"`
 	Feedback      *string    `db:"feedback" json:"feedback"`
 	SubmissionURL *string    `db:"submission_url" json:"submissionUrl"`
+	Criteria      *string    `db:"criteria" json:"criteria"`
 	CreatedAt     *time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt     *time.Time `db:"updated_at" json:"updatedAt"`
 	LatestFileID  *uuid.UUID `db:"latest_file_id" json:"latestFileId"`
@@ -55,6 +58,7 @@ type RequestTaskFormat struct {
 	Title       string    `db:"title" json:"title" validate:"required"`
 	Description string    `db:"description" json:"description" validate:"required"`
 	Deadline    time.Time `db:"deadline" json:"deadline" validate:"required"`
+	Criteria    interface{} `json:"criteria"`
 }
 
 type RequestSubmitTaskFileFormat struct {
@@ -65,10 +69,10 @@ type RequestSubmitTaskFileFormat struct {
 }
 
 type RequestGradeTaskFormat struct {
-	Grade    *int      `db:"grade" json:"grade" validate:"omitempty,min=0,max=100"`
-	Status   string    `json:"status" validate:"required"`
-	Feedback *string   `db:"feedback" json:"feedback"`
-	UserID   uuid.UUID `json:"-"`
+	Grade    interface{} `json:"grade"`
+	Status   string      `json:"status" validate:"required"`
+	Feedback *string     `json:"feedback"`
+	UserID   uuid.UUID   `json:"-"`
 }
 
 type RequestTaskListFormat struct {
@@ -110,6 +114,13 @@ func (t *Task) NewTaskFormat(reqFormat RequestTaskFormat) (newTask Task, err err
 		CreatedAt:   &now,
 		UpdatedAt:   &now,
 	}
+
+	if reqFormat.Criteria != nil {
+		if criteriaBytes, err := json.Marshal(reqFormat.Criteria); err == nil {
+			criteriaStr := string(criteriaBytes)
+			newTask.Criteria = &criteriaStr
+		}
+	}
 	return
 }
 
@@ -117,8 +128,15 @@ func (t *Task) UpdateGradeFormat(req RequestGradeTaskFormat) (newTask Task, err 
 	now := time.Now()
 	newTask = *t
 	newTask.Status = req.Status
-	newTask.Grade = req.Grade
+
+	// We no longer blindly assign req.Grade here because it is interface{} and needs to be marshaled.
+	// We will marshal it in the service layer.
+	// newTask.Grade = req.Grade 
+	
+	// We also don't blindly assign Feedback here because we want to format it in the service 
+	// and pass it directly to be concatenated in the repository, but wait, the repository needs the new feedback chunk.
 	newTask.Feedback = req.Feedback
+
 	newTask.UpdatedAt = &now
 	return
 }
@@ -138,6 +156,12 @@ func (t *Task) UpdateFormat(reqFormat RequestTaskFormat) (newTask Task, err erro
 	newTask.Description = reqFormat.Description
 	if !reqFormat.Deadline.IsZero() {
 		newTask.Deadline = reqFormat.Deadline
+	}
+	if reqFormat.Criteria != nil {
+		if criteriaBytes, err := json.Marshal(reqFormat.Criteria); err == nil {
+			criteriaStr := string(criteriaBytes)
+			newTask.Criteria = &criteriaStr
+		}
 	}
 	newTask.UpdatedAt = &now
 	return
