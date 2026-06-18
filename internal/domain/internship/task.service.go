@@ -212,6 +212,7 @@ func (s *TaskServiceImpl) GradeTask(ctx context.Context, id uuid.UUID, req Reque
 	// Notify Student about grade/feedback
 	if newTask.Status == "graded" {
 		socket.GetInstance().SendToUser(task.StudentID.String(), "new_notification", map[string]interface{}{
+			"title":   "Tugas Dinilai",
 			"message": "Tugas '" + task.Title + "' Anda telah dinilai. Lihat feedback.",
 			"type":    "task_graded",
 		})
